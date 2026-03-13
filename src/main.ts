@@ -700,10 +700,26 @@ function updatePreviewDoor(mousePoint: THREE.Vector3) {
         previewDoor.visible = true;
         previewDoor.userData.placeData = bestSnapshot;
     } else {
-        // No wall nearby - snap to grid and show default door
-        const snappedPoint = inputManager.snapToGrid(mousePoint);
-        previewDoor.position.copy(snappedPoint);
-        previewDoor.rotation.y = 0; // Default orientation
+        // No wall nearby - snap door to nearest tile edge
+        // Horizontal edge: z is integer, x is at half-integer (center of edge)
+        const hx = Math.floor(mousePoint.x) + 0.5;
+        const hz = Math.round(mousePoint.z);
+        const hDist = Math.sqrt((mousePoint.x - hx) ** 2 + (mousePoint.z - hz) ** 2);
+
+        // Vertical edge: x is integer, z is at half-integer
+        const vx = Math.round(mousePoint.x);
+        const vz = Math.floor(mousePoint.z) + 0.5;
+        const vDist = Math.sqrt((mousePoint.x - vx) ** 2 + (mousePoint.z - vz) ** 2);
+
+        if (hDist <= vDist) {
+            // Horizontal edge - door runs along X
+            previewDoor.position.set(hx, 0, hz);
+            previewDoor.rotation.y = 0;
+        } else {
+            // Vertical edge - door runs along Z
+            previewDoor.position.set(vx, 0, vz);
+            previewDoor.rotation.y = Math.PI / 2;
+        }
         previewDoor.visible = true;
         previewDoor.userData.placeData = null;
     }
