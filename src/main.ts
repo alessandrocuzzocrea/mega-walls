@@ -394,25 +394,17 @@ container.addEventListener('mousedown', (event) => {
     if (isDoorMode) {
         const point = inputManager.getMousePosition(event);
         if (point) {
-            const snappedPoint = inputManager.snapToGrid(point);
-            if (!doorStartPoint) {
-                doorStartPoint = snappedPoint;
-            } else {
-                const dx = Math.abs(snappedPoint.x - doorStartPoint.x);
-                const dz = Math.abs(snappedPoint.z - doorStartPoint.z);
+            // In one-click mode, we check if the preview is visible and has data
+            if (previewDoor.visible && previewDoor.userData.placeData) {
+                const { p1, p2, doorPos, direction } = previewDoor.userData.placeData;
                 
-                if ((dx === 1 && dz === 0) || (dx === 0 && dz === 1)) {
-                    const direction = dx === 1 ? 'horizontal' : 'vertical';
-                    const doorPos = doorStartPoint.clone().add(snappedPoint).multiplyScalar(0.5);
-                    
-                    // Split walls at this location
-                    wallManager.splitWallAt(doorStartPoint, snappedPoint);
-                    
-                    doorManager.addDoor(doorPos, direction);
-                    updateJSONOverlay();
-                }
-                doorStartPoint = null;
-                previewDoor.visible = false;
+                // Split walls at this location
+                wallManager.splitWallAt(p1, p2);
+                
+                doorManager.addDoor(doorPos, direction);
+                updateJSONOverlay();
+                
+                // Keep tool active, but the preview will refresh on next mousemove
             }
         }
         return;
@@ -491,14 +483,11 @@ container.addEventListener('mousemove', (event) => {
             cursor.position.copy(snappedPoint);
             cursor.visible = true;
 
-            if (doorStartPoint) {
-                updatePreviewDoor(doorStartPoint, snappedPoint);
-            } else {
-                previewDoor.visible = false;
-            }
+            updatePreviewDoor(point);
             checkGridExpansion(snappedPoint);
         } else {
             cursor.visible = false;
+            previewDoor.visible = false;
         }
         return;
     }
@@ -559,17 +548,52 @@ function updatePreviewFloor(start: THREE.Vector3, end: THREE.Vector3) {
     );
 }
 
-function updatePreviewDoor(start: THREE.Vector3, end: THREE.Vector3) {
-    const dx = Math.abs(end.x - start.x);
-    const dz = Math.abs(end.z - start.z);
-    
-    if ((dx === 1 && dz === 0) || (dx === 0 && dz === 1)) {
-        const direction = dx === 1 ? 'horizontal' : 'vertical';
-        previewDoor.position.copy(start.clone().add(end).multiplyScalar(0.5));
-        previewDoor.rotation.y = direction === 'vertical' ? Math.PI / 2 : 0;
+function updatePreviewDoor(mousePoint: THREE.Vector3) {
+    const walls = wallManager.getData();
+    let bestDist = 0.5; // Snap distance threshold
+    let bestSnapshot: any = null;
+
+    for (const wall of walls) {
+        const wallStart = new THREE.Vector3(wall.start.x, 0, wall.start.z);
+        const wallEnd = new THREE.Vector3(wall.end.x, 0, wall.end.z);
+        const wallDir = wallEnd.clone().sub(wallStart);
+        const wallLen = wallDir.length();
+        if (wallLen < 0.99) continue; // Too short for a door
+
+        const wallDirNorm = wallDir.clone().normalize();
+        
+        // Project mouse point onto the infinite line of the wall
+        const v = mousePoint.clone().sub(wallStart);
+        const t = v.dot(wallDirNorm);
+        
+        // Clamp t to stay within wall boundaries, leaving 0.5 room on each side if possible
+        // but for now let's just find the nearest valid 1-unit segment
+        const safeT = Math.max(0, Math.min(wallLen - 1, Math.round(t - 0.5)));
+        
+        const p1 = wallStart.clone().add(wallDirNorm.clone().multiplyScalar(safeT));
+        const p2 = wallStart.clone().add(wallDirNorm.clone().multiplyScalar(safeT + 1));
+        const doorPos = p1.clone().add(p2).multiplyScalar(0.5);
+
+        const dist = mousePoint.distanceTo(doorPos);
+        if (dist < bestDist) {
+            bestDist = dist;
+            bestSnapshot = {
+                p1: { x: p1.x, z: p1.z },
+                p2: { x: p2.x, z: p2.z },
+                doorPos,
+                direction: Math.abs(wallDirNorm.x) > 0.5 ? 'horizontal' : 'vertical'
+            };
+        }
+    }
+
+    if (bestSnapshot) {
+        previewDoor.position.copy(bestSnapshot.doorPos);
+        previewDoor.rotation.y = bestSnapshot.direction === 'vertical' ? Math.PI / 2 : 0;
         previewDoor.visible = true;
+        previewDoor.userData.placeData = bestSnapshot;
     } else {
         previewDoor.visible = false;
+        previewDoor.userData.placeData = null;
     }
 }
 

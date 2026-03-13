@@ -53,6 +53,7 @@ const mockThree = {
     receiveShadow = false;
     userData: any = {};
     name = '';
+    clone() { return new (this.constructor as any)(); }
   },
   BoxGeometry: class {},
   SphereGeometry: class {},
@@ -67,6 +68,7 @@ const mockThree = {
     add = vi.fn(); 
     remove = vi.fn(); 
     children: any[] = []; 
+    clone() { return new (this.constructor as any)(); }
   },
   Vector3: Vector3Mock,
   Raycaster: class { 
