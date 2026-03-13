@@ -69,29 +69,29 @@ describe('FloorManager Overlaps', () => {
         floorManager = new FloorManager(scene);
     });
 
-    it('should allow overlapping tiles by default', () => {
+    it('should NOT allow overlapping tiles', () => {
         // Add tile at (0,0)
         floorManager.addTile(0, 0);
         expect(floorManager.getData().tiles.length).toBe(1);
         expect(floorManager.getFloors().length).toBe(1);
 
-        // Add another tile at (0,0) - currently FloorManager doesn't check for overlaps
+        // Add another tile at (0,0) - should NOT be added
         floorManager.addTile(0, 0);
         
         const data = floorManager.getData();
-        expect(data.tiles.length).toBe(2);
-        expect(floorManager.getFloors().length).toBe(2);
+        expect(data.tiles.length).toBe(1);
+        expect(floorManager.getFloors().length).toBe(1);
     });
 
-    it('should allow overlapping large floor and tile', () => {
+    it('should NOT allow overlapping large floor and tile', () => {
         // Add a 2x2 floor at (0,0)
         floorManager.addFloor(0, 0, 2, 2);
-        // Add a 1x1 tile at (0,0) which overlaps with the floor
+        // Add a 1x1 tile at (0,0) which overlaps with the floor - should NOT be added
         floorManager.addTile(0, 0);
 
         const data = floorManager.getData();
         expect(data.floors.length).toBe(1);
-        expect(data.tiles.length).toBe(1);
-        expect(floorManager.getFloors().length).toBe(2);
+        expect(data.tiles.length).toBe(0);
+        expect(floorManager.getFloors().length).toBe(1);
     });
 });

@@ -27,6 +27,10 @@ export class FloorManager {
     }
 
     public addFloor(x: number, z: number, width: number, depth: number) {
+        if (this.isAreaOccupied(x, z, width, depth)) {
+            console.warn('Cannot add floor: area already occupied', { x, z, width, depth });
+            return;
+        }
         if (width === 1 && depth === 1) {
             this.addTile(x, z);
             return;
@@ -37,6 +41,10 @@ export class FloorManager {
     }
 
     public addTile(x: number, z: number) {
+        if (this.isAreaOccupied(x, z, 1, 1)) {
+            console.warn('Cannot add tile: area already occupied', { x, z });
+            return;
+        }
         const data: TileData = { x, z };
         this.tileDataList.push(data);
         this.createFloorMesh({ x, z, width: 1, depth: 1 }, this.tileDataList.length - 1, 'tile');
@@ -62,6 +70,48 @@ export class FloorManager {
         mesh.name = type;
 
         this.floors.add(mesh);
+    }
+
+    public isAreaOccupied(x: number, z: number, width: number, depth: number): boolean {
+        // Check if any existing tile or floor overlaps with the new area
+        // A floor covers [x, x + width] and [z, z + depth]
+        
+        const newX1 = x;
+        const newX2 = x + width;
+        const newZ1 = z;
+        const newZ2 = z + depth;
+
+        // Check against floorDataList
+        for (const floor of this.floorDataList) {
+            const fX1 = floor.x;
+            const fX2 = floor.x + floor.width;
+            const fZ1 = floor.z;
+            const fZ2 = floor.z + floor.depth;
+
+            // Simple rectangle intersection: 
+            // result = (r1.x1 < r2.x2 && r1.x2 > r2.x1 && r1.y1 < r2.y2 && r1.y2 > r2.y1)
+            // Using >= and <= because we don't want even touching overlaps? 
+            // In floor tiles, they share edges but shouldn't overlap. 
+            // So strictly < and > is usually for intersection.
+            // However, our coordinates are integers (mostly).
+            if (newX1 < fX2 && newX2 > fX1 && newZ1 < fZ2 && newZ2 > fZ1) {
+                return true;
+            }
+        }
+
+        // Check against tileDataList
+        for (const tile of this.tileDataList) {
+            const tX1 = tile.x;
+            const tX2 = tile.x + 1;
+            const tZ1 = tile.z;
+            const tZ2 = tile.z + 1;
+
+            if (newX1 < tX2 && newX2 > tX1 && newZ1 < tZ2 && newZ2 > tZ1) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public floodFill(startPoint: THREE.Vector3, walls: WallData[]): boolean {
