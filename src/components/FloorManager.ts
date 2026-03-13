@@ -8,10 +8,16 @@ export interface FloorData {
     depth: number;
 }
 
+export interface TileData {
+    x: number;
+    z: number;
+}
+
 export class FloorManager {
     private scene: THREE.Scene;
     private floors: THREE.Group;
     private floorDataList: FloorData[] = [];
+    private tileDataList: TileData[] = [];
     private isWireframe: boolean = false;
 
     constructor(scene: THREE.Scene) {
@@ -21,12 +27,22 @@ export class FloorManager {
     }
 
     public addFloor(x: number, z: number, width: number, depth: number) {
+        if (width === 1 && depth === 1) {
+            this.addTile(x, z);
+            return;
+        }
         const data: FloorData = { x, z, width, depth };
         this.floorDataList.push(data);
-        this.createFloorMesh(data, this.floorDataList.length - 1);
+        this.createFloorMesh(data, this.floorDataList.length - 1, 'floor');
     }
 
-    private createFloorMesh(data: FloorData, index: number) {
+    public addTile(x: number, z: number) {
+        const data: TileData = { x, z };
+        this.tileDataList.push(data);
+        this.createFloorMesh({ x, z, width: 1, depth: 1 }, this.tileDataList.length - 1, 'tile');
+    }
+
+    private createFloorMesh(data: FloorData, index: number, type: 'floor' | 'tile') {
         const geometry = new THREE.PlaneGeometry(data.width, data.depth);
         const material = new THREE.MeshStandardMaterial({
             color: 0x444444,
@@ -42,7 +58,8 @@ export class FloorManager {
         mesh.position.set(data.x + data.width / 2, 0.005, data.z + data.depth / 2);
         mesh.receiveShadow = true;
         mesh.userData.dataIndex = index;
-        mesh.name = 'floor';
+        mesh.userData.type = type;
+        mesh.name = type;
 
         this.floors.add(mesh);
     }
@@ -100,7 +117,7 @@ export class FloorManager {
         // For simplicity, we'll add each cell as a 1x1 floor or merge them
         // Merging is better - for now let's just add them
         resultCells.forEach(cell => {
-            this.addFloor(cell.x, cell.z, 1, 1);
+            this.addTile(cell.x, cell.z);
         });
 
         return true;
@@ -143,8 +160,11 @@ export class FloorManager {
         return false;
     }
 
-    public getData(): FloorData[] {
-        return this.floorDataList;
+    public getData() {
+        return {
+            floors: this.floorDataList,
+            tiles: this.tileDataList
+        };
     }
 
     public setWireframe(enabled: boolean) {
@@ -157,6 +177,7 @@ export class FloorManager {
 
     public clearFloors() {
         this.floorDataList = [];
+        this.tileDataList = [];
         while (this.floors.children.length > 0) {
             const floor = this.floors.children[0] as THREE.Mesh;
             floor.geometry.dispose();
@@ -165,10 +186,13 @@ export class FloorManager {
         }
     }
 
-    public resetAndLoad(data: FloorData[]) {
+    public resetAndLoad(floors: FloorData[], tiles: TileData[] = []) {
         this.clearFloors();
-        data.forEach(floor => {
+        floors.forEach(floor => {
             this.addFloor(floor.x, floor.z, floor.width, floor.depth);
+        });
+        tiles.forEach(tile => {
+            this.addTile(tile.x, tile.z);
         });
     }
 }

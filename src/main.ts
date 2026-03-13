@@ -109,7 +109,7 @@ function updateJSONOverlay() {
     if (!jsonContent) return;
     const data = {
         walls: wallManager.getData(),
-        floors: floorManager.getData()
+        ...floorManager.getData()
     };
     const jsonString = JSON.stringify(data, null, 2);
     jsonContent.textContent = jsonString;
@@ -124,8 +124,11 @@ function loadFromLocalStorage() {
             if (data.walls && Array.isArray(data.walls)) {
                 wallManager.resetAndLoad(data.walls);
             }
-            if (data.floors && Array.isArray(data.floors)) {
-                floorManager.resetAndLoad(data.floors);
+            if (data.floors || data.tiles) {
+                floorManager.resetAndLoad(
+                    Array.isArray(data.floors) ? data.floors : [],
+                    Array.isArray(data.tiles) ? data.tiles : []
+                );
             }
             checkGridExpansion();
         } catch (e) {
