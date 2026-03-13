@@ -59,15 +59,32 @@ const jsonContent = document.getElementById('json-content')!;
 // Navigation & Setup State
 let currentGridSize = 20;
 
-// Initial UI state
-updateJSONOverlay();
+const STORAGE_KEY = 'mega-walls-room-data';
 
 function updateJSONOverlay() {
     if (!jsonContent) return;
     const data = {
         walls: wallManager.getData()
     };
-    jsonContent.textContent = JSON.stringify(data, null, 2);
+    const jsonString = JSON.stringify(data, null, 2);
+    jsonContent.textContent = jsonString;
+    localStorage.setItem(STORAGE_KEY, jsonString);
+}
+
+function loadFromLocalStorage() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const data = JSON.parse(saved);
+            if (data.walls && Array.isArray(data.walls)) {
+                wallManager.resetAndLoad(data.walls);
+                checkGridExpansion();
+                updateJSONOverlay();
+            }
+        } catch (e) {
+            console.error('Failed to load from localStorage', e);
+        }
+    }
 }
 
 function updateApplicationSize(newSize: number) {
@@ -180,4 +197,5 @@ function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
 }
 
 // Initial state
+loadFromLocalStorage();
 updateJSONOverlay();
