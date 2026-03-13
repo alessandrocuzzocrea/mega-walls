@@ -69,13 +69,13 @@ describe('FloorManager Overlaps', () => {
         floorManager = new FloorManager(scene);
     });
 
-    it('should NOT allow overlapping tiles', () => {
+    it('should NOT allow overlapping tiles (duplicate tiles)', () => {
         // Add tile at (0,0)
         floorManager.addTile(0, 0);
         expect(floorManager.getData().tiles.length).toBe(1);
         expect(floorManager.getFloors().length).toBe(1);
 
-        // Add another tile at (0,0) - should NOT be added
+        // Add another tile at (0,0) - should NOT be added as it's a complete duplicate
         floorManager.addTile(0, 0);
         
         const data = floorManager.getData();
@@ -83,15 +83,28 @@ describe('FloorManager Overlaps', () => {
         expect(floorManager.getFloors().length).toBe(1);
     });
 
-    it('should NOT allow overlapping large floor and tile', () => {
-        // Add a 2x2 floor at (0,0)
+    it('should merge overlapping large floors', () => {
+        // Add a 2x2 floor at (0,0) -> cells: (0,0), (1,0), (0,1), (1,1)
         floorManager.addFloor(0, 0, 2, 2);
-        // Add a 1x1 tile at (0,0) which overlaps with the floor - should NOT be added
-        floorManager.addTile(0, 0);
+        
+        // Add another 2x2 floor at (1,0) -> cells: (1,0), (2,0), (1,1), (2,1)
+        // Overlap: (1,0), (1,1)
+        // New cells: (2,0), (2,1)
+        floorManager.addFloor(1, 0, 2, 2);
 
         const data = floorManager.getData();
-        expect(data.floors.length).toBe(1);
-        expect(data.tiles.length).toBe(0);
-        expect(floorManager.getFloors().length).toBe(1);
+        // Since (1,0) to (2,2) overlaps with (0,0) to (2,2)
+        // The new parts are essentially a 1x2 strip at x=2
+        // Total occupied cells should be 6
+        
+        // We'll verify by checking a new helper 'isCellOccupied' 
+        // or by counting the total area if we implement merging correctly.
+        // For now, let's assume it adds the new parts as a separate floor or merged.
+        
+        let totalArea = 0;
+        data.floors.forEach(f => totalArea += f.width * f.depth);
+        data.tiles.forEach(() => totalArea += 1);
+        
+        expect(totalArea).toBe(6);
     });
 });

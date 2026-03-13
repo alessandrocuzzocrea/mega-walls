@@ -18,6 +18,7 @@ export class FloorManager {
     private floors: THREE.Group;
     private floorDataList: FloorData[] = [];
     private tileDataList: TileData[] = [];
+    private occupiedCells: Set<string> = new Set();
     private isWireframe: boolean = false;
 
     constructor(scene: THREE.Scene) {
@@ -27,27 +28,82 @@ export class FloorManager {
     }
 
     public addFloor(x: number, z: number, width: number, depth: number) {
-        if (this.isAreaOccupied(x, z, width, depth)) {
-            console.warn('Cannot add floor: area already occupied', { x, z, width, depth });
-            return;
+        const newCells: { x: number, z: number }[] = [];
+        for (let ix = x; ix < x + width; ix++) {
+            for (let iz = z; iz < z + depth; iz++) {
+                const key = `${ix},${iz}`;
+                if (!this.occupiedCells.has(key)) {
+                    newCells.push({ x: ix, z: iz });
+                    this.occupiedCells.add(key);
+                }
+            }
         }
-        if (width === 1 && depth === 1) {
-            this.addTile(x, z);
-            return;
-        }
-        const data: FloorData = { x, z, width, depth };
-        this.floorDataList.push(data);
-        this.createFloorMesh(data, this.floorDataList.length - 1, 'floor');
+
+        if (newCells.length === 0) return;
+
+        // Merge cells into rectangles
+        const rectangles = this.mergeCellsIntoRectangles(newCells);
+        rectangles.forEach(rect => {
+            if (rect.width === 1 && rect.depth === 1) {
+                const data: TileData = { x: rect.x, z: rect.z };
+                this.tileDataList.push(data);
+                this.createFloorMesh({ ...rect }, this.tileDataList.length - 1, 'tile');
+            } else {
+                const data: FloorData = { ...rect };
+                this.floorDataList.push(data);
+                this.createFloorMesh(data, this.floorDataList.length - 1, 'floor');
+            }
+        });
     }
 
     public addTile(x: number, z: number) {
-        if (this.isAreaOccupied(x, z, 1, 1)) {
-            console.warn('Cannot add tile: area already occupied', { x, z });
-            return;
+        this.addFloor(x, z, 1, 1);
+    }
+
+    private mergeCellsIntoRectangles(cells: { x: number, z: number }[]): FloorData[] {
+        if (cells.length === 0) return [];
+        
+        // Very simple greedy merge: for each cell, try to expand it right then down
+        // Note: A more sophisticated algorithm like scanline would be better, 
+        // but for now let's just do a basic one.
+        const result: FloorData[] = [];
+        const remaining = new Set(cells.map(c => `${c.x},${c.z}`));
+
+        while (remaining.size > 0) {
+            const firstKey = remaining.values().next().value;
+            const [startX, startZ] = firstKey.split(',').map(Number);
+            
+            let width = 1;
+            let depth = 1;
+
+            // Expand width
+            while (remaining.has(`${startX + width},${startZ}`)) {
+                width++;
+            }
+
+            // Expand depth
+            let canExpandDepth = true;
+            while (canExpandDepth) {
+                const nextZ = startZ + depth;
+                for (let x = startX; x < startX + width; x++) {
+                    if (!remaining.has(`${x},${nextZ}`)) {
+                        canExpandDepth = false;
+                        break;
+                    }
+                }
+                if (canExpandDepth) depth++;
+            }
+
+            // Add rectangle and remove cells from remaining
+            result.push({ x: startX, z: startZ, width, depth });
+            for (let x = startX; x < startX + width; x++) {
+                for (let z = startZ; z < startZ + depth; z++) {
+                    remaining.delete(`${x},${z}`);
+                }
+            }
         }
-        const data: TileData = { x, z };
-        this.tileDataList.push(data);
-        this.createFloorMesh({ x, z, width: 1, depth: 1 }, this.tileDataList.length - 1, 'tile');
+
+        return result;
     }
 
     private createFloorMesh(data: FloorData, index: number, type: 'floor' | 'tile') {
@@ -73,44 +129,11 @@ export class FloorManager {
     }
 
     public isAreaOccupied(x: number, z: number, width: number, depth: number): boolean {
-        // Check if any existing tile or floor overlaps with the new area
-        // A floor covers [x, x + width] and [z, z + depth]
-        
-        const newX1 = x;
-        const newX2 = x + width;
-        const newZ1 = z;
-        const newZ2 = z + depth;
-
-        // Check against floorDataList
-        for (const floor of this.floorDataList) {
-            const fX1 = floor.x;
-            const fX2 = floor.x + floor.width;
-            const fZ1 = floor.z;
-            const fZ2 = floor.z + floor.depth;
-
-            // Simple rectangle intersection: 
-            // result = (r1.x1 < r2.x2 && r1.x2 > r2.x1 && r1.y1 < r2.y2 && r1.y2 > r2.y1)
-            // Using >= and <= because we don't want even touching overlaps? 
-            // In floor tiles, they share edges but shouldn't overlap. 
-            // So strictly < and > is usually for intersection.
-            // However, our coordinates are integers (mostly).
-            if (newX1 < fX2 && newX2 > fX1 && newZ1 < fZ2 && newZ2 > fZ1) {
-                return true;
+        for (let ix = x; ix < x + width; ix++) {
+            for (let iz = z; iz < z + depth; iz++) {
+                if (this.occupiedCells.has(`${ix},${iz}`)) return true;
             }
         }
-
-        // Check against tileDataList
-        for (const tile of this.tileDataList) {
-            const tX1 = tile.x;
-            const tX2 = tile.x + 1;
-            const tZ1 = tile.z;
-            const tZ2 = tile.z + 1;
-
-            if (newX1 < tX2 && newX2 > tX1 && newZ1 < tZ2 && newZ2 > tZ1) {
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -248,8 +271,16 @@ export class FloorManager {
 
         // Update data arrays
         if (type === 'floor') {
+            const data = this.floorDataList[index];
+            for (let dx = 0; dx < data.width; dx++) {
+                for (let dz = 0; dz < data.depth; dz++) {
+                    this.occupiedCells.delete(`${data.x + dx},${data.z + dz}`);
+                }
+            }
             this.floorDataList.splice(index, 1);
         } else {
+            const data = this.tileDataList[index];
+            this.occupiedCells.delete(`${data.x},${data.z}`);
             this.tileDataList.splice(index, 1);
         }
 
@@ -272,6 +303,7 @@ export class FloorManager {
     public clearFloors() {
         this.floorDataList = [];
         this.tileDataList = [];
+        this.occupiedCells.clear();
         while (this.floors.children.length > 0) {
             const floor = this.floors.children[0] as THREE.Mesh;
             floor.geometry.dispose();
