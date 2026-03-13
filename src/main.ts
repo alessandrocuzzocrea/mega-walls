@@ -12,10 +12,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
+      <button id="delete-mode" class="danger-btn">Delete Tool: OFF</button>
       <button id="clear-walls" class="secondary-btn">Clear All</button>
       <div class="instructions">
         <p>• Scroll to Zoom</p>
-        <p>• Left Click to Draw</p>
+        <p>• Left Click to Draw/Delete</p>
         <p>• Right Click to Orbit</p>
       </div>
     </div>
@@ -35,7 +36,9 @@ const inputManager = new InputManager(sceneManager.getCamera());
 
 // Interaction State
 let isWallMode = false;
+let isDeleteMode = false;
 let wallStartPoint: THREE.Vector3 | null = null;
+let hoveredWall: THREE.Object3D | null = null;
 
 // Visual Helpers
 const previewWall = new THREE.Mesh(
@@ -54,6 +57,7 @@ sceneManager.getScene().add(cursor);
 
 // UI Elements
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
 const jsonContent = document.getElementById('json-content')!;
 
 // Navigation & Setup State
@@ -117,14 +121,39 @@ function checkGridExpansion(point?: THREE.Vector3) {
 // UI Event Listeners
 wallModeBtn.addEventListener('click', () => {
     isWallMode = !isWallMode;
+    if (isWallMode) {
+        isDeleteMode = false;
+        deleteModeBtn.classList.remove('active');
+        deleteModeBtn.textContent = 'Delete Tool: OFF';
+    }
     wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
     wallModeBtn.classList.toggle('active', isWallMode);
     cursor.visible = isWallMode;
-    sceneManager.setControlsEnabled(!isWallMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode);
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
         checkGridExpansion(); // Final check to contract if needed
+    }
+});
+
+deleteModeBtn.addEventListener('click', () => {
+    isDeleteMode = !isDeleteMode;
+    if (isDeleteMode) {
+        isWallMode = false;
+        wallModeBtn.classList.remove('active');
+        wallModeBtn.textContent = 'Wall Mode: OFF';
+        cursor.visible = false;
+        wallStartPoint = null;
+        previewWall.visible = false;
+    }
+    deleteModeBtn.textContent = `Delete Tool: ${isDeleteMode ? 'ON' : 'OFF'}`;
+    deleteModeBtn.classList.toggle('active', isDeleteMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode);
+    
+    if (!isDeleteMode && hoveredWall) {
+        wallManager.highlightWall(hoveredWall, false);
+        hoveredWall = null;
     }
 });
 
@@ -136,8 +165,19 @@ document.getElementById('clear-walls')?.addEventListener('click', () => {
 
 // Mouse Interactions
 container.addEventListener('mousedown', (event) => {
-    if (!isWallMode) return;
+    if (isDeleteMode) {
+        const intersect = inputManager.getObjectAtMouse(event, wallManager.getWalls());
+        if (intersect) {
+            wallManager.removeWall(intersect.object);
+            checkGridExpansion();
+            updateJSONOverlay();
+            hoveredWall = null;
+        }
+        return;
+    }
 
+    if (!isWallMode) return;
+    
     const point = inputManager.getMousePosition(event);
     if (point) {
         const snappedPoint = inputManager.snapToGrid(point);
@@ -158,6 +198,21 @@ container.addEventListener('mousedown', (event) => {
 });
 
 container.addEventListener('mousemove', (event) => {
+    if (isDeleteMode) {
+        const intersect = inputManager.getObjectAtMouse(event, wallManager.getWalls());
+        if (intersect) {
+            if (hoveredWall !== intersect.object) {
+                wallManager.highlightWall(hoveredWall, false);
+                hoveredWall = intersect.object;
+                wallManager.highlightWall(hoveredWall, true);
+            }
+        } else if (hoveredWall) {
+            wallManager.highlightWall(hoveredWall, false);
+            hoveredWall = null;
+        }
+        return;
+    }
+
     if (!isWallMode) {
         cursor.visible = false;
         return;

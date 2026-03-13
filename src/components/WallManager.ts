@@ -19,14 +19,20 @@ export class WallManager {
     }
 
     public addWall(start: THREE.Vector3, end: THREE.Vector3) {
+        const index = this.wallDataList.length;
         this.wallDataList.push({
             start: { x: start.x, z: start.z },
             end: { x: end.x, z: end.z }
         });
         const length = start.distanceTo(end);
         const geometry = new THREE.BoxGeometry(length, this.wallHeight, this.wallThickness);
-        const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
+        const material = new THREE.MeshStandardMaterial({ 
+            color: 0xcccccc,
+            emissive: new THREE.Color(0x000000)
+        });
         const wall = new THREE.Mesh(geometry, material);
+        wall.userData.dataIndex = index;
+        wall.name = 'wall';
 
         // Position wall at the center point between start and end
         wall.position.copy(start.clone().add(end).multiplyScalar(0.5));
@@ -58,6 +64,42 @@ export class WallManager {
 
     public getData(): WallData[] {
         return this.wallDataList;
+    }
+
+    public getWalls(): THREE.Object3D[] {
+        return this.walls.children;
+    }
+
+    public highlightWall(wall: THREE.Object3D | null, highlight: boolean) {
+        if (!wall) return;
+        const mesh = wall as THREE.Mesh;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (highlight) {
+            mat.emissive.set(0xff0000);
+            mat.emissiveIntensity = 0.5;
+        } else {
+            mat.emissive.set(0x000000);
+            mat.emissiveIntensity = 0;
+        }
+    }
+
+    public removeWall(wall: THREE.Object3D) {
+        const index = wall.userData.dataIndex;
+        if (index !== undefined) {
+            // Remove from data list
+            this.wallDataList.splice(index, 1);
+            // Re-index remaining walls effectively
+            this.walls.children.forEach(child => {
+                if (child.userData.dataIndex > index) {
+                    child.userData.dataIndex--;
+                }
+            });
+        }
+        
+        const mesh = wall as THREE.Mesh;
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this.walls.remove(wall);
     }
 
     public resetAndLoad(data: WallData[]) {

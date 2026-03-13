@@ -27,6 +27,16 @@ export class InputManager {
         return null;
     }
 
+    public getObjectAtMouse(event: MouseEvent, objects: THREE.Object3D[]): THREE.Intersection | null {
+        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        this.raycaster.setFromCamera(this.mouse, this.camera);
+        const intersects = this.raycaster.intersectObjects(objects);
+        
+        return intersects.length > 0 ? intersects[0] : null;
+    }
+
     public snapToGrid(point: THREE.Vector3, gridSize: number = 1): THREE.Vector3 {
         return new THREE.Vector3(
             Math.round(point.x / gridSize) * gridSize,
