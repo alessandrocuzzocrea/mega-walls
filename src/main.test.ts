@@ -68,6 +68,11 @@ const mockThree = {
     add = vi.fn(); 
     remove = vi.fn(); 
     children: any[] = []; 
+    position = new Vector3Mock();
+    rotation = new Vector3Mock();
+    visible = true;
+    userData: any = {};
+    name = '';
     clone() { return new (this.constructor as any)(); }
   },
   Vector3: Vector3Mock,
@@ -205,5 +210,30 @@ describe('Mega-Walls UI', () => {
     roomModeBtn.click();
     moveMouse();
     expect(cursor.visible).toBe(false);
+  });
+
+  it('should allow placing a door without a wall', async () => {
+    const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
+    const canvasContainer = document.getElementById('canvas-container')!;
+    const jsonContent = document.getElementById('json-content')!;
+
+    // Select door tool
+    doorModeBtn.click();
+    expect(doorModeBtn.textContent).toContain('ON');
+
+    // Simulate mouse move to empty space
+    // We need to ensure InputManager.getMousePosition returns a valid point in the test env.
+    // The current mock for Raycaster.ray.intersectPlane returns a new Vector3Mock which is truthy.
+    const moveEvent = new MouseEvent('mousemove', { clientX: 100, clientY: 100, bubbles: true });
+    canvasContainer.dispatchEvent(moveEvent);
+    
+    // Simulate the click
+    const downEvent = new MouseEvent('mousedown', { clientX: 100, clientY: 100, bubbles: true });
+    canvasContainer.dispatchEvent(downEvent);
+
+    // Check JSON content for a door - placed without any walls present
+    const data = JSON.parse(jsonContent.textContent || '{}');
+    expect(data.doors).toBeDefined();
+    expect(data.doors.length).toBeGreaterThan(0);
   });
 });

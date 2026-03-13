@@ -404,16 +404,17 @@ container.addEventListener('mousedown', (event) => {
         const point = inputManager.getMousePosition(event);
         if (point) {
             // In one-click mode, we check if the preview is visible and has data
-            if (previewDoor.visible && previewDoor.userData.placeData) {
-                const { p1, p2, doorPos, angle } = previewDoor.userData.placeData;
-                
-                // Split walls at this location
-                wallManager.splitWallAt(p1, p2);
-                
-                doorManager.addDoor(doorPos, angle);
+            if (previewDoor.visible) {
+                if (previewDoor.userData.placeData) {
+                    const { p1, p2, doorPos, angle } = previewDoor.userData.placeData;
+                    // Split walls at this location
+                    wallManager.splitWallAt(p1, p2);
+                    doorManager.addDoor(doorPos, angle);
+                } else {
+                    // Place door freely on the grid
+                    doorManager.addDoor(previewDoor.position.clone(), previewDoor.rotation.y);
+                }
                 updateJSONOverlay();
-                
-                // Keep tool active, but the preview will refresh on next mousemove
             }
         }
         return;
@@ -699,7 +700,11 @@ function updatePreviewDoor(mousePoint: THREE.Vector3) {
         previewDoor.visible = true;
         previewDoor.userData.placeData = bestSnapshot;
     } else {
-        previewDoor.visible = false;
+        // No wall nearby - snap to grid and show default door
+        const snappedPoint = inputManager.snapToGrid(mousePoint);
+        previewDoor.position.copy(snappedPoint);
+        previewDoor.rotation.y = 0; // Default orientation
+        previewDoor.visible = true;
         previewDoor.userData.placeData = null;
     }
 }
