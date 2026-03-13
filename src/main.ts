@@ -37,12 +37,21 @@ const inputManager = new InputManager(sceneManager.getCamera());
 // Interaction State
 let isWallMode = false;
 let wallStartPoint: THREE.Vector3 | null = null;
+
+// Visual Helpers
 const previewWall = new THREE.Mesh(
     new THREE.BoxGeometry(1, 2.5, 0.2),
     new THREE.MeshStandardMaterial({ color: 0x646cff, transparent: true, opacity: 0.5 })
 );
 previewWall.visible = false;
 sceneManager.getScene().add(previewWall);
+
+const cursor = new THREE.Mesh(
+    new THREE.SphereGeometry(0.15, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
+);
+cursor.visible = false;
+sceneManager.getScene().add(cursor);
 
 // UI Event Listeners
 const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
@@ -60,6 +69,7 @@ wallModeBtn.addEventListener('click', () => {
     isWallMode = !isWallMode;
     wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
     wallModeBtn.classList.toggle('active', isWallMode);
+    cursor.visible = isWallMode;
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
@@ -80,25 +90,36 @@ container.addEventListener('mousedown', (event) => {
         
         if (!wallStartPoint) {
             wallStartPoint = snappedPoint;
+            cursor.material.color.set(0x646cff); // Change color to indicate first point is set
         } else {
             wallManager.addWall(wallStartPoint, snappedPoint);
             wallStartPoint = null;
             previewWall.visible = false;
+            cursor.material.color.set(0xffffff); // Reset color
         }
     }
 });
 
 container.addEventListener('mousemove', (event) => {
-    if (!isWallMode || !wallStartPoint) {
-        previewWall.visible = false;
+    if (!isWallMode) {
+        cursor.visible = false;
         return;
     }
 
     const point = inputManager.getMousePosition(event);
     if (point) {
         const snappedPoint = inputManager.snapToGrid(point);
-        updatePreviewWall(wallStartPoint, snappedPoint);
-        previewWall.visible = true;
+        cursor.position.copy(snappedPoint);
+        cursor.visible = true;
+
+        if (wallStartPoint) {
+            updatePreviewWall(wallStartPoint, snappedPoint);
+            previewWall.visible = true;
+        } else {
+            previewWall.visible = false;
+        }
+    } else {
+        cursor.visible = false;
     }
 });
 
