@@ -45,7 +45,7 @@ export class FloorManager {
     private createFloorMesh(data: FloorData, index: number, type: 'floor' | 'tile') {
         const geometry = new THREE.PlaneGeometry(data.width, data.depth);
         const material = new THREE.MeshStandardMaterial({
-            color: 0x444444,
+            color: 0x8B4513,
             roughness: 0.8,
             metalness: 0.2,
             side: THREE.DoubleSide,
