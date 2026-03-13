@@ -20,12 +20,60 @@ export class WallManager {
     }
 
     public addWall(start: THREE.Vector3, end: THREE.Vector3) {
+        let mergedStart = { x: start.x, z: start.z };
+        let mergedEnd = { x: end.x, z: end.z };
+        let merged = true;
+
+        while (merged) {
+            merged = false;
+            for (let i = 0; i < this.wallDataList.length; i++) {
+                const other = this.wallDataList[i];
+                
+                // Vector for current segment
+                const dx1 = mergedEnd.x - mergedStart.x;
+                const dz1 = mergedEnd.z - mergedStart.z;
+                // Vector for other segment
+                const dx2 = other.end.x - other.start.x;
+                const dz2 = other.end.z - other.start.z;
+                
+                // Check if collinear using cross product in 2D
+                const crossProduct = dx1 * dz2 - dz1 * dx2;
+                if (Math.abs(crossProduct) > 0.0001) continue;
+                
+                // Check for shared endpoints and merge
+                let connected = false;
+                if (this.pointsEqual(mergedStart, other.end)) {
+                    mergedStart = { ...other.start };
+                    connected = true;
+                } else if (this.pointsEqual(mergedStart, other.start)) {
+                    mergedStart = { ...other.end };
+                    connected = true;
+                } else if (this.pointsEqual(mergedEnd, other.start)) {
+                    mergedEnd = { ...other.end };
+                    connected = true;
+                } else if (this.pointsEqual(mergedEnd, other.end)) {
+                    mergedEnd = { ...other.start };
+                    connected = true;
+                }
+
+                if (connected) {
+                    this.removeWallAtIndex(i);
+                    merged = true;
+                    break;
+                }
+            }
+        }
+
+        const finalStart = new THREE.Vector3(mergedStart.x, 0, mergedStart.z);
+        const finalEnd = new THREE.Vector3(mergedEnd.x, 0, mergedEnd.z);
+
         const index = this.wallDataList.length;
         this.wallDataList.push({
-            start: { x: start.x, z: start.z },
-            end: { x: end.x, z: end.z }
+            start: mergedStart,
+            end: mergedEnd
         });
-        const length = start.distanceTo(end) + this.wallThickness;
+
+        const length = finalStart.distanceTo(finalEnd) + this.wallThickness;
         const geometry = new THREE.BoxGeometry(length, this.wallHeight, this.wallThickness);
         const material = new THREE.MeshStandardMaterial({ 
             color: 0xcccccc,
@@ -40,14 +88,36 @@ export class WallManager {
         wall.name = 'wall';
 
         // Position wall at the center point between start and end
-        wall.position.copy(start.clone().add(end).multiplyScalar(0.5));
+        wall.position.copy(finalStart.clone().add(finalEnd).multiplyScalar(0.5));
         wall.position.y = this.wallHeight / 2;
 
         // Rotate wall to align with start and end points
-        const angle = Math.atan2(end.z - start.z, end.x - start.x);
+        const angle = Math.atan2(finalEnd.z - finalStart.z, finalEnd.x - finalStart.x);
         wall.rotation.y = -angle;
 
         this.walls.add(wall);
+    }
+
+    private pointsEqual(p1: { x: number, z: number }, p2: { x: number, z: number }): boolean {
+        return Math.abs(p1.x - p2.x) < 0.0001 && Math.abs(p1.z - p2.z) < 0.0001;
+    }
+
+    private removeWallAtIndex(index: number) {
+        const wallMesh = this.walls.children.find(child => child.userData.dataIndex === index) as THREE.Mesh;
+        if (wallMesh) {
+            wallMesh.geometry.dispose();
+            (wallMesh.material as THREE.Material).dispose();
+            this.walls.remove(wallMesh);
+        }
+
+        this.wallDataList.splice(index, 1);
+
+        // Re-index remaining walls
+        this.walls.children.forEach(child => {
+            if (child.userData.dataIndex > index) {
+                child.userData.dataIndex--;
+            }
+        });
     }
 
     public getExtents(): number {
@@ -91,20 +161,8 @@ export class WallManager {
     public removeWall(wall: THREE.Object3D) {
         const index = wall.userData.dataIndex;
         if (index !== undefined) {
-            // Remove from data list
-            this.wallDataList.splice(index, 1);
-            // Re-index remaining walls effectively
-            this.walls.children.forEach(child => {
-                if (child.userData.dataIndex > index) {
-                    child.userData.dataIndex--;
-                }
-            });
+            this.removeWallAtIndex(index);
         }
-        
-        const mesh = wall as THREE.Mesh;
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-        this.walls.remove(wall);
     }
 
     public resetAndLoad(data: WallData[]) {
