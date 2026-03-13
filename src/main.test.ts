@@ -22,6 +22,7 @@ const mockThree = {
     children = []; 
     background = { set: vi.fn() };
   },
+  DoubleSide: 2,
   PerspectiveCamera: class { 
     position = new Vector3Mock();
     lookAt = vi.fn();
@@ -127,5 +128,33 @@ describe('Mega-Walls UI', () => {
     deleteModeBtn?.click();
     expect(deleteModeBtn?.textContent).toContain('OFF');
     expect(deleteModeBtn?.classList.contains('active')).toBe(false);
+
+    // Test Floor Mode
+    const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
+    const floorSubTools = document.getElementById('floor-sub-tools')!;
+    
+    expect(floorModeBtn).toBeTruthy();
+    expect(floorSubTools.classList.contains('hidden')).toBe(true);
+
+    floorModeBtn.click();
+    expect(floorModeBtn.textContent).toContain('ON');
+    expect(floorModeBtn.classList.contains('active')).toBe(true);
+    expect(floorSubTools.classList.contains('hidden')).toBe(false);
+    expect(wallModeBtn.classList.contains('active')).toBe(false);
+    expect(deleteModeBtn.classList.contains('active')).toBe(false);
+
+    // Check Sub-tools
+    const rectBtn = document.getElementById('floor-rect') as HTMLButtonElement;
+    const fillBtn = document.getElementById('floor-fill') as HTMLButtonElement;
+    expect(rectBtn.classList.contains('active')).toBe(true);
+
+    fillBtn.click();
+    expect(fillBtn.classList.contains('active')).toBe(true);
+    expect(rectBtn.classList.contains('active')).toBe(false);
+
+    // Switching back to Wall Mode should hide floor tools
+    wallModeBtn.click();
+    expect(floorSubTools.classList.contains('hidden')).toBe(true);
+    expect(floorModeBtn.textContent).toContain('OFF');
   });
 });

@@ -4,6 +4,7 @@ import { SceneManager } from './engine/SceneManager'
 import { Grid } from './components/Grid'
 import { Floor } from './components/Floor'
 import { WallManager } from './components/WallManager'
+import { FloorManager } from './components/FloorManager'
 import { InputManager } from './engine/InputManager'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
@@ -12,6 +13,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
+      <div class="tool-group">
+        <button id="floor-mode" class="primary-btn">Floor Tool: OFF</button>
+        <div id="floor-sub-tools" class="sub-tools hidden">
+          <button id="floor-rect" class="mini-btn active">Rect</button>
+          <button id="floor-fill" class="mini-btn">Fill</button>
+        </div>
+      </div>
       <button id="delete-mode" class="danger-btn">Delete Tool: OFF</button>
       <button id="toggle-wireframe" class="secondary-btn">Wireframe: OFF</button>
       <button id="clear-walls" class="secondary-btn">Clear All</button>
@@ -33,12 +41,17 @@ const sceneManager = new SceneManager(container);
 const grid = new Grid(sceneManager.getScene());
 const floor = new Floor(sceneManager.getScene());
 const wallManager = new WallManager(sceneManager.getScene());
+const floorManager = new FloorManager(sceneManager.getScene());
 const inputManager = new InputManager(sceneManager.getCamera());
 
 // Interaction State
 let isWallMode = false;
 let isDeleteMode = false;
+let isFloorMode = false;
+let floorSubMode: 'rect' | 'fill' = 'rect';
+
 let wallStartPoint: THREE.Vector3 | null = null;
+let floorStartPoint: THREE.Vector3 | null = null;
 let hoveredWall: THREE.Object3D | null = null;
 let isWireframe = false;
 
@@ -57,6 +70,19 @@ const previewWall = new THREE.Mesh(
 previewWall.visible = false;
 sceneManager.getScene().add(previewWall);
 
+const previewFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshStandardMaterial({ 
+        color: 0x646bff, 
+        transparent: true, 
+        opacity: 0.5,
+        side: THREE.DoubleSide
+    })
+);
+previewFloor.rotation.x = -Math.PI / 2;
+previewFloor.visible = false;
+sceneManager.getScene().add(previewFloor);
+
 const cursor = new THREE.Mesh(
     new THREE.SphereGeometry(0.15, 16, 16),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
@@ -66,6 +92,10 @@ sceneManager.getScene().add(cursor);
 
 // UI Elements
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
+const floorSubTools = document.getElementById('floor-sub-tools')!;
+const floorRectBtn = document.getElementById('floor-rect') as HTMLButtonElement;
+const floorFillBtn = document.getElementById('floor-fill') as HTMLButtonElement;
 const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
 const wireframeBtn = document.getElementById('toggle-wireframe') as HTMLButtonElement;
 const jsonContent = document.getElementById('json-content')!;
@@ -78,7 +108,8 @@ const STORAGE_KEY = 'mega-walls-room-data';
 function updateJSONOverlay() {
     if (!jsonContent) return;
     const data = {
-        walls: wallManager.getData()
+        walls: wallManager.getData(),
+        floors: floorManager.getData()
     };
     const jsonString = JSON.stringify(data, null, 2);
     jsonContent.textContent = jsonString;
@@ -92,9 +123,11 @@ function loadFromLocalStorage() {
             const data = JSON.parse(saved);
             if (data.walls && Array.isArray(data.walls)) {
                 wallManager.resetAndLoad(data.walls);
-                checkGridExpansion();
-                updateJSONOverlay();
             }
+            if (data.floors && Array.isArray(data.floors)) {
+                floorManager.resetAndLoad(data.floors);
+            }
+            checkGridExpansion();
         } catch (e) {
             console.error('Failed to load from localStorage', e);
         }
@@ -138,13 +171,56 @@ wallModeBtn.addEventListener('click', () => {
     }
     wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
     wallModeBtn.classList.toggle('active', isWallMode);
+    
+    if (isWallMode) {
+        isFloorMode = false;
+        floorModeBtn.textContent = 'Floor Tool: OFF';
+        floorModeBtn.classList.remove('active');
+        floorSubTools.classList.add('hidden');
+    }
+
     cursor.visible = isWallMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode);
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
         checkGridExpansion(); // Final check to contract if needed
     }
+});
+
+floorModeBtn.addEventListener('click', () => {
+    isFloorMode = !isFloorMode;
+    if (isFloorMode) {
+        isWallMode = false;
+        wallModeBtn.classList.remove('active');
+        wallModeBtn.textContent = 'Wall Mode: OFF';
+        isDeleteMode = false;
+        deleteModeBtn.classList.remove('active');
+        deleteModeBtn.textContent = 'Delete Tool: OFF';
+        floorSubTools.classList.remove('hidden');
+    } else {
+        floorSubTools.classList.add('hidden');
+    }
+    floorModeBtn.textContent = `Floor Tool: ${isFloorMode ? 'ON' : 'OFF'}`;
+    floorModeBtn.classList.toggle('active', isFloorMode);
+    cursor.visible = isFloorMode;
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode);
+    if (!isFloorMode) {
+        floorStartPoint = null;
+        previewFloor.visible = false;
+    }
+});
+
+floorRectBtn.addEventListener('click', () => {
+    floorSubMode = 'rect';
+    floorRectBtn.classList.add('active');
+    floorFillBtn.classList.remove('active');
+});
+
+floorFillBtn.addEventListener('click', () => {
+    floorSubMode = 'fill';
+    floorFillBtn.classList.add('active');
+    floorRectBtn.classList.remove('active');
 });
 
 deleteModeBtn.addEventListener('click', () => {
@@ -153,6 +229,10 @@ deleteModeBtn.addEventListener('click', () => {
         isWallMode = false;
         wallModeBtn.classList.remove('active');
         wallModeBtn.textContent = 'Wall Mode: OFF';
+        isFloorMode = false;
+        floorModeBtn.classList.remove('active');
+        floorModeBtn.textContent = 'Floor Tool: OFF';
+        floorSubTools.classList.add('hidden');
         cursor.visible = false;
         wallStartPoint = null;
         previewWall.visible = false;
@@ -173,12 +253,15 @@ wireframeBtn.addEventListener('click', () => {
     wireframeBtn.classList.toggle('active', isWireframe);
     
     wallManager.setWireframe(isWireframe);
+    floorManager.setWireframe(isWireframe);
     floor.setWireframe(isWireframe);
     (previewWall.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
+    (previewFloor.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
 });
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {
     wallManager.clearWalls();
+    floorManager.clearFloors();
     checkGridExpansion();
     updateJSONOverlay();
 });
@@ -192,6 +275,33 @@ container.addEventListener('mousedown', (event) => {
             checkGridExpansion();
             updateJSONOverlay();
             hoveredWall = null;
+        }
+        return;
+    }
+
+    if (isFloorMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            if (floorSubMode === 'fill') {
+                const success = floorManager.floodFill(snappedPoint, wallManager.getData());
+                if (success) updateJSONOverlay();
+            } else {
+                if (!floorStartPoint) {
+                    floorStartPoint = snappedPoint;
+                } else {
+                    const x = Math.min(floorStartPoint.x, snappedPoint.x);
+                    const z = Math.min(floorStartPoint.z, snappedPoint.z);
+                    const w = Math.abs(snappedPoint.x - floorStartPoint.x);
+                    const d = Math.abs(snappedPoint.z - floorStartPoint.z);
+                    if (w > 0 && d > 0) {
+                        floorManager.addFloor(x, z, w, d);
+                        updateJSONOverlay();
+                    }
+                    floorStartPoint = null;
+                    previewFloor.visible = false;
+                }
+            }
         }
         return;
     }
@@ -229,6 +339,27 @@ container.addEventListener('mousemove', (event) => {
         } else if (hoveredWall) {
             wallManager.highlightWall(hoveredWall, false);
             hoveredWall = null;
+        }
+        checkGridExpansion(snappedPoint);
+        return;
+    }
+
+    if (isFloorMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            cursor.position.copy(snappedPoint);
+            cursor.visible = true;
+
+            if (floorSubMode === 'rect' && floorStartPoint) {
+                updatePreviewFloor(floorStartPoint, snappedPoint);
+                previewFloor.visible = true;
+            } else {
+                previewFloor.visible = false;
+            }
+            checkGridExpansion(snappedPoint);
+        } else {
+            cursor.visible = false;
         }
         return;
     }
@@ -270,6 +401,23 @@ function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
 
     const angle = Math.atan2(end.z - start.z, end.x - start.x);
     previewWall.rotation.y = -angle;
+}
+
+function updatePreviewFloor(start: THREE.Vector3, end: THREE.Vector3) {
+    const w = Math.abs(end.x - start.x);
+    const d = Math.abs(end.z - start.z);
+    
+    if (w < 0.1 || d < 0.1) {
+        previewFloor.visible = false;
+        return;
+    }
+
+    previewFloor.scale.set(w, d, 1);
+    previewFloor.position.set(
+        (start.x + end.x) / 2,
+        0.01,
+        (start.z + end.z) / 2
+    );
 }
 
 // Initial state

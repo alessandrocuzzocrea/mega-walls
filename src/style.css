@@ -153,6 +153,49 @@ input[type="range"] {
   box-shadow: 0 0 15px rgba(255, 74, 74, 0.5);
 }
 
+.tool-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sub-tools {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.sub-tools.hidden {
+  display: none;
+}
+
+.mini-btn {
+  flex: 1;
+  padding: 6px;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #aaa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mini-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.mini-btn.active {
+  background: #646cff;
+  border-color: #fff;
+  color: white;
+}
+
 /* Base styles for buttons... */
 
 #json-overlay {
