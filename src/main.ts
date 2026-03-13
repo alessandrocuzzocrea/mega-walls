@@ -25,6 +25,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
     </div>
   </div>
+  <div id="json-overlay" class="glass-panel">
+    <label>Serialized Data (JSON)</label>
+    <pre id="json-content">{}</pre>
+  </div>
 `
 
 const container = document.getElementById('canvas-container')!;
@@ -57,9 +61,22 @@ sceneManager.getScene().add(cursor);
 const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
 const gridSizeVal = document.getElementById('grid-size-val')!;
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+const jsonContent = document.getElementById('json-content')!;
 
 // Navigation & Setup State
 let currentGridSize = 20;
+
+// Initial UI state
+updateJSONOverlay();
+
+function updateJSONOverlay() {
+    if (!jsonContent) return;
+    const data = {
+        gridSize: currentGridSize,
+        walls: wallManager.getData()
+    };
+    jsonContent.textContent = JSON.stringify(data, null, 2);
+}
 
 function updateApplicationSize(newSize: number) {
     currentGridSize = newSize;
@@ -110,6 +127,7 @@ wallModeBtn.addEventListener('click', () => {
 document.getElementById('clear-walls')?.addEventListener('click', () => {
     wallManager.clearWalls();
     checkGridExpansion();
+    updateJSONOverlay();
 });
 
 // Mouse Interactions
@@ -127,6 +145,7 @@ container.addEventListener('mousedown', (event) => {
         } else {
             wallManager.addWall(wallStartPoint, snappedPoint);
             checkGridExpansion(snappedPoint);
+            updateJSONOverlay();
             wallStartPoint = null;
             previewWall.visible = false;
             cursor.material.color.set(0xffffff);

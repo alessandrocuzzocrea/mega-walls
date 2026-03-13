@@ -135,3 +135,26 @@ input[type="range"] {
   border-color: #fff;
   box-shadow: 0 0 15px rgba(100, 108, 255, 0.5);
 }
+
+#json-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  pointer-events: auto;
+  max-height: 80vh;
+  width: 350px;
+}
+
+#json-content {
+  margin: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  color: #646cff;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-y: auto;
+  max-height: 60vh;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

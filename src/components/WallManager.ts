@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 
+export interface WallData {
+    start: { x: number, z: number };
+    end: { x: number, z: number };
+}
+
 export class WallManager {
     private scene: THREE.Scene;
     private walls: THREE.Group;
+    private wallDataList: WallData[] = [];
     private wallHeight: number = 2.5;
     private wallThickness: number = 0.2;
 
@@ -13,6 +19,10 @@ export class WallManager {
     }
 
     public addWall(start: THREE.Vector3, end: THREE.Vector3) {
+        this.wallDataList.push({
+            start: { x: start.x, z: start.z },
+            end: { x: end.x, z: end.z }
+        });
         const length = start.distanceTo(end);
         const geometry = new THREE.BoxGeometry(length, this.wallHeight, this.wallThickness);
         const material = new THREE.MeshStandardMaterial({ color: 0xcccccc });
@@ -46,7 +56,12 @@ export class WallManager {
         return maxExtent;
     }
 
+    public getData(): WallData[] {
+        return this.wallDataList;
+    }
+
     public clearWalls() {
+        this.wallDataList = [];
         while(this.walls.children.length > 0) {
             const wall = this.walls.children[0] as THREE.Mesh;
             wall.geometry.dispose();
