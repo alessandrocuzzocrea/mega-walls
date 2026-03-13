@@ -29,6 +29,23 @@ export class WallManager {
         this.walls.add(wall);
     }
 
+    public getExtents(): number {
+        let maxExtent = 0;
+        this.walls.children.forEach(child => {
+            const wall = child as THREE.Mesh;
+            const geo = wall.geometry as THREE.BoxGeometry;
+            const size = geo.parameters.width;
+            const pos = wall.position;
+            const angle = Math.abs(wall.rotation.y);
+            
+            // Simplified extent check for snapped walls
+            const extentX = Math.abs(pos.x) + (Math.abs(Math.cos(angle)) * size / 2);
+            const extentZ = Math.abs(pos.z) + (Math.abs(Math.sin(angle)) * size / 2);
+            maxExtent = Math.max(maxExtent, extentX, extentZ);
+        });
+        return maxExtent;
+    }
+
     public clearWalls() {
         while(this.walls.children.length > 0) {
             const wall = this.walls.children[0] as THREE.Mesh;

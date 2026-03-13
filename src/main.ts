@@ -53,16 +53,45 @@ const cursor = new THREE.Mesh(
 cursor.visible = false;
 sceneManager.getScene().add(cursor);
 
-// UI Event Listeners
+// UI Elements
 const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
 const gridSizeVal = document.getElementById('grid-size-val')!;
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
 
+// Navigation & Setup State
+let currentGridSize = 20;
+
+function updateApplicationSize(newSize: number) {
+    currentGridSize = newSize;
+    gridSizeInput.value = currentGridSize.toString();
+    gridSizeVal.textContent = currentGridSize.toString();
+    grid.updateSize(currentGridSize, currentGridSize);
+    floor.updateSize(currentGridSize);
+}
+
+function checkGridExpansion(point?: THREE.Vector3) {
+    const wallExtent = wallManager.getExtents();
+    const cursorExtent = point ? Math.max(Math.abs(point.x), Math.abs(point.z)) : 0;
+    
+    // We want the grid to be at least large enough to contain all walls AND the current cursor
+    const maxExtent = Math.max(wallExtent, cursorExtent);
+    const requiredSize = (maxExtent * 2) + 2; // +2 for padding
+    
+    // Min size of 20, Max size of 100 for safety (can be adjusted)
+    const minSize = 20;
+    const maxSize = 100;
+    
+    let targetSize = Math.max(minSize, Math.ceil(requiredSize / 10) * 10);
+    targetSize = Math.min(targetSize, maxSize);
+
+    if (targetSize !== currentGridSize) {
+        updateApplicationSize(targetSize);
+    }
+}
+
+// UI Event Listeners
 gridSizeInput.addEventListener('input', () => {
-    const size = parseInt(gridSizeInput.value);
-    gridSizeVal.textContent = size.toString();
-    grid.updateSize(size, size);
-    floor.updateSize(size);
+    updateApplicationSize(parseInt(gridSizeInput.value));
 });
 
 wallModeBtn.addEventListener('click', () => {
@@ -74,11 +103,13 @@ wallModeBtn.addEventListener('click', () => {
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
+        checkGridExpansion(); // Final check to contract if needed
     }
 });
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {
     wallManager.clearWalls();
+    checkGridExpansion();
 });
 
 // Mouse Interactions
@@ -91,12 +122,14 @@ container.addEventListener('mousedown', (event) => {
         
         if (!wallStartPoint) {
             wallStartPoint = snappedPoint;
-            cursor.material.color.set(0x646cff); // Change color to indicate first point is set
+            cursor.material.color.set(0x646cff);
+            checkGridExpansion(snappedPoint);
         } else {
             wallManager.addWall(wallStartPoint, snappedPoint);
+            checkGridExpansion(snappedPoint);
             wallStartPoint = null;
             previewWall.visible = false;
-            cursor.material.color.set(0xffffff); // Reset color
+            cursor.material.color.set(0xffffff);
         }
     }
 });
@@ -119,6 +152,7 @@ container.addEventListener('mousemove', (event) => {
         } else {
             previewWall.visible = false;
         }
+        checkGridExpansion(snappedPoint);
     } else {
         cursor.visible = false;
     }
