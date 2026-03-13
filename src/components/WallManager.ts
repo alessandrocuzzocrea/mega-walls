@@ -60,6 +60,16 @@ export class WallManager {
         return this.wallDataList;
     }
 
+    public resetAndLoad(data: WallData[]) {
+        this.clearWalls();
+        data.forEach(wall => {
+            this.addWall(
+                new THREE.Vector3(wall.start.x, 0, wall.start.z),
+                new THREE.Vector3(wall.end.x, 0, wall.end.z)
+            );
+        });
+    }
+
     public clearWalls() {
         this.wallDataList = [];
         while(this.walls.children.length > 0) {
