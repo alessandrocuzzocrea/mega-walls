@@ -49,12 +49,8 @@ const floorManager = new FloorManager(sceneManager.getScene());
 const inputManager = new InputManager(sceneManager.getCamera());
 
 // Interaction State
-let isWallMode = false;
-let isDoorMode = false;
-let isDeleteMode = false;
-let isFloorMode = false;
-let isRoomMode = false;
-let floorSubMode: 'rect' | 'fill' = 'rect';
+type EditorTool = 'wall' | 'room' | 'door' | 'floor' | 'delete' | null;
+export let activeTool: EditorTool = null;
 
 let wallStartPoint: THREE.Vector3 | null = null;
 let doorStartPoint: THREE.Vector3 | null = null;
@@ -62,6 +58,8 @@ let floorStartPoint: THREE.Vector3 | null = null;
 let roomStartPoint: THREE.Vector3 | null = null;
 let hoveredObject: THREE.Object3D | null = null;
 let isWireframe = false;
+
+let floorSubMode: 'rect' | 'fill' = 'rect';
 
 // Visual Helpers
 const previewWall = new THREE.Mesh(
@@ -91,11 +89,10 @@ previewFloor.rotation.x = -Math.PI / 2;
 previewFloor.visible = false;
 sceneManager.getScene().add(previewFloor);
 
-const cursor = new THREE.Mesh(
+export const cursor = new THREE.Mesh(
     new THREE.SphereGeometry(0.15, 16, 16),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
 );
-cursor.visible = false;
 cursor.visible = false;
 sceneManager.getScene().add(cursor);
 
@@ -241,118 +238,65 @@ function checkGridExpansion(point?: THREE.Vector3) {
     }
 }
 
-// UI Event Listeners
-wallModeBtn.addEventListener('click', () => {
-    isWallMode = !isWallMode;
-    if (isWallMode) {
-        isDeleteMode = false;
-        deleteModeBtn.classList.remove('active');
-        deleteModeBtn.textContent = 'Delete Tool: OFF';
-    }
-    wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
-    wallModeBtn.classList.toggle('active', isWallMode);
-    
-    if (isWallMode) {
-        isRoomMode = false;
-        roomModeBtn.textContent = 'Room Tool: OFF';
-        roomModeBtn.classList.remove('active');
-        isDoorMode = false;
-        doorModeBtn.textContent = 'Door Tool: OFF';
-        doorModeBtn.classList.remove('active');
-        isFloorMode = false;
-        floorModeBtn.textContent = 'Floor Tool: OFF';
-        floorModeBtn.classList.remove('active');
-        floorSubTools.classList.add('hidden');
-    }
-
-    cursor.visible = isWallMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
-    if (!isWallMode) {
-        wallStartPoint = null;
-        previewWall.visible = false;
-        checkGridExpansion(); // Final check to contract if needed
-    }
-});
-
-roomModeBtn.addEventListener('click', () => {
-    isRoomMode = !isRoomMode;
-    if (isRoomMode) {
-        isWallMode = false;
-        wallModeBtn.classList.remove('active');
-        wallModeBtn.textContent = 'Wall Mode: OFF';
-        isDoorMode = false;
-        doorModeBtn.textContent = 'Door Tool: OFF';
-        doorModeBtn.classList.remove('active');
-        isFloorMode = false;
-        floorModeBtn.classList.remove('active');
-        floorModeBtn.textContent = 'Floor Tool: OFF';
-        floorSubTools.classList.add('hidden');
-        isDeleteMode = false;
-        deleteModeBtn.classList.remove('active');
-        deleteModeBtn.textContent = 'Delete Tool: OFF';
-    }
-    roomModeBtn.textContent = `Room Tool: ${isRoomMode ? 'ON' : 'OFF'}`;
-    roomModeBtn.classList.toggle('active', isRoomMode);
-    cursor.visible = isRoomMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
-    if (!isRoomMode) {
-        roomStartPoint = null;
-        previewRoom.visible = false;
-    }
-});
-
-doorModeBtn.addEventListener('click', () => {
-    isDoorMode = !isDoorMode;
-    if (isDoorMode) {
-        isWallMode = false;
-        wallModeBtn.classList.remove('active');
-        wallModeBtn.textContent = 'Wall Mode: OFF';
-        isRoomMode = false;
-        roomModeBtn.classList.remove('active');
-        roomModeBtn.textContent = 'Room Tool: OFF';
-        isFloorMode = false;
-        floorModeBtn.classList.remove('active');
-        floorModeBtn.textContent = 'Floor Tool: OFF';
-        floorSubTools.classList.add('hidden');
-        isDeleteMode = false;
-        deleteModeBtn.classList.remove('active');
-        deleteModeBtn.textContent = 'Delete Tool: OFF';
-    }
-    doorModeBtn.textContent = `Door Tool: ${isDoorMode ? 'ON' : 'OFF'}`;
-    doorModeBtn.classList.toggle('active', isDoorMode);
-    cursor.visible = isDoorMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
-    if (!isDoorMode) {
-        doorStartPoint = null;
-        previewDoor.visible = false;
-    }
-});
-
-floorModeBtn.addEventListener('click', () => {
-    isFloorMode = !isFloorMode;
-    if (isFloorMode) {
-        isWallMode = false;
-        wallModeBtn.classList.remove('active');
-        wallModeBtn.textContent = 'Wall Mode: OFF';
-        isRoomMode = false;
-        roomModeBtn.classList.remove('active');
-        roomModeBtn.textContent = 'Room Tool: OFF';
-        isDeleteMode = false;
-        deleteModeBtn.classList.remove('active');
-        deleteModeBtn.textContent = 'Delete Tool: OFF';
-        floorSubTools.classList.remove('hidden');
+function setActiveTool(tool: EditorTool) {
+    // If clicking the same tool, toggle it off
+    if (activeTool === tool) {
+        activeTool = null;
     } else {
-        floorSubTools.classList.add('hidden');
+        activeTool = tool;
     }
-    floorModeBtn.textContent = `Floor Tool: ${isFloorMode ? 'ON' : 'OFF'}`;
-    floorModeBtn.classList.toggle('active', isFloorMode);
-    cursor.visible = isFloorMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
-    if (!isFloorMode) {
-        floorStartPoint = null;
-        previewFloor.visible = false;
+
+    // Reset all temporary states
+    wallStartPoint = null;
+    doorStartPoint = null;
+    floorStartPoint = null;
+    roomStartPoint = null;
+    previewWall.visible = false;
+    previewRoom.visible = false;
+    previewDoor.visible = false;
+    previewFloor.visible = false;
+    
+    // Clear highlights if exiting delete mode
+    if (hoveredObject) {
+        if (hoveredObject.name === 'wall') wallManager.highlightWall(hoveredObject, false);
+        else floorManager.highlightFloor(hoveredObject, false);
+        hoveredObject = null;
     }
-});
+
+    // Update UI Buttons
+    wallModeBtn.textContent = `Wall Mode: ${activeTool === 'wall' ? 'ON' : 'OFF'}`;
+    wallModeBtn.classList.toggle('active', activeTool === 'wall');
+    
+    roomModeBtn.textContent = `Room Tool: ${activeTool === 'room' ? 'ON' : 'OFF'}`;
+    roomModeBtn.classList.toggle('active', activeTool === 'room');
+
+    doorModeBtn.textContent = `Door Tool: ${activeTool === 'door' ? 'ON' : 'OFF'}`;
+    doorModeBtn.classList.toggle('active', activeTool === 'door');
+
+    floorModeBtn.textContent = `Floor Tool: ${activeTool === 'floor' ? 'ON' : 'OFF'}`;
+    floorModeBtn.classList.toggle('active', activeTool === 'floor');
+    floorSubTools.classList.toggle('hidden', activeTool !== 'floor');
+
+    deleteModeBtn.textContent = `Delete Tool: ${activeTool === 'delete' ? 'ON' : 'OFF'}`;
+    deleteModeBtn.classList.toggle('active', activeTool === 'delete');
+
+    // Cursor visibility
+    cursor.visible = activeTool !== null && activeTool !== 'delete';
+    
+    // Controls - disable when any tool is active
+    sceneManager.setControlsEnabled(activeTool === null);
+
+    if (activeTool === null) {
+        checkGridExpansion();
+    }
+}
+
+// UI Event Listeners
+wallModeBtn.addEventListener('click', () => setActiveTool('wall'));
+roomModeBtn.addEventListener('click', () => setActiveTool('room'));
+doorModeBtn.addEventListener('click', () => setActiveTool('door'));
+floorModeBtn.addEventListener('click', () => setActiveTool('floor'));
+deleteModeBtn.addEventListener('click', () => setActiveTool('delete'));
 
 floorRectBtn.addEventListener('click', () => {
     floorSubMode = 'rect';
@@ -364,37 +308,6 @@ floorFillBtn.addEventListener('click', () => {
     floorSubMode = 'fill';
     floorFillBtn.classList.add('active');
     floorRectBtn.classList.remove('active');
-});
-
-deleteModeBtn.addEventListener('click', () => {
-    isDeleteMode = !isDeleteMode;
-    if (isDeleteMode) {
-        isWallMode = false;
-        wallModeBtn.classList.remove('active');
-        wallModeBtn.textContent = 'Wall Mode: OFF';
-        isRoomMode = false;
-        roomModeBtn.classList.remove('active');
-        roomModeBtn.textContent = 'Room Tool: OFF';
-        isFloorMode = false;
-        floorModeBtn.classList.remove('active');
-        floorModeBtn.textContent = 'Floor Tool: OFF';
-        floorSubTools.classList.add('hidden');
-        cursor.visible = false;
-        wallStartPoint = null;
-        previewWall.visible = false;
-    }
-    deleteModeBtn.textContent = `Delete Tool: ${isDeleteMode ? 'ON' : 'OFF'}`;
-    deleteModeBtn.classList.toggle('active', isDeleteMode);
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isDoorMode && !isFloorMode && !isRoomMode);
-    
-    if (!isDeleteMode && hoveredObject) {
-        if (hoveredObject.name === 'wall') {
-            wallManager.highlightWall(hoveredObject, false);
-        } else {
-            floorManager.highlightFloor(hoveredObject, false);
-        }
-        hoveredObject = null;
-    }
 });
 
 wireframeBtn.addEventListener('click', () => {
@@ -421,7 +334,7 @@ document.getElementById('clear-walls')?.addEventListener('click', () => {
 
 // Mouse Interactions
 container.addEventListener('mousedown', (event) => {
-    if (isDeleteMode) {
+    if (activeTool === 'delete') {
         const targets = [...wallManager.getWalls(), ...doorManager.getDoors(), ...floorManager.getFloors()];
         const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
@@ -442,7 +355,7 @@ container.addEventListener('mousedown', (event) => {
         return;
     }
 
-    if (isRoomMode) {
+    if (activeTool === 'room') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
@@ -454,7 +367,7 @@ container.addEventListener('mousedown', (event) => {
         return;
     }
 
-    if (isFloorMode) {
+    if (activeTool === 'floor') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
@@ -481,7 +394,7 @@ container.addEventListener('mousedown', (event) => {
         return;
     }
 
-    if (isDoorMode) {
+    if (activeTool === 'door') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             // In one-click mode, we check if the preview is visible and has data
@@ -500,7 +413,7 @@ container.addEventListener('mousedown', (event) => {
         return;
     }
 
-    if (!isWallMode) return;
+    if (activeTool !== 'wall') return;
     
     const point = inputManager.getMousePosition(event);
     if (point) {
@@ -522,7 +435,7 @@ container.addEventListener('mousedown', (event) => {
 });
 
 container.addEventListener('mousemove', (event) => {
-    if (isDeleteMode) {
+    if (activeTool === 'delete') {
         const targets = [...wallManager.getWalls(), ...doorManager.getDoors(), ...floorManager.getFloors()];
         const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
@@ -546,7 +459,7 @@ container.addEventListener('mousemove', (event) => {
         return;
     }
 
-    if (isRoomMode) {
+    if (activeTool === 'room') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
@@ -566,7 +479,7 @@ container.addEventListener('mousemove', (event) => {
         return;
     }
 
-    if (isFloorMode) {
+    if (activeTool === 'floor') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
@@ -586,7 +499,7 @@ container.addEventListener('mousemove', (event) => {
         return;
     }
 
-    if (isDoorMode) {
+    if (activeTool === 'door') {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
@@ -602,8 +515,9 @@ container.addEventListener('mousemove', (event) => {
         return;
     }
 
-    if (!isWallMode) {
-        cursor.visible = false;
+    if (activeTool !== 'wall') {
+        // Fallback for when no tool is active - double check cursor visibility
+        cursor.visible = activeTool !== null && activeTool !== 'delete';
         return;
     }
 
@@ -626,7 +540,7 @@ container.addEventListener('mousemove', (event) => {
 });
 
 container.addEventListener('mouseup', (event) => {
-    if (isRoomMode && roomStartPoint) {
+    if (activeTool === 'room' && roomStartPoint) {
         const point = inputManager.getMousePosition(event);
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);

@@ -159,4 +159,53 @@ describe('Mega-Walls UI', () => {
     expect(floorSubTools.classList.contains('hidden')).toBe(true);
     expect(floorModeBtn.textContent).toContain('OFF');
   });
+
+  it('should manage cursor visibility correctly for all tools', async () => {
+    const { cursor, activeTool } = await import('./main');
+    
+    const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+    const roomModeBtn = document.getElementById('room-mode-btn') as HTMLButtonElement;
+    const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
+    const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
+    const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
+
+    // Helper to simulate mouse move to trigger cursor logic
+    const moveMouse = () => {
+        const event = new MouseEvent('mousemove', { clientX: 100, clientY: 100 });
+        document.getElementById('canvas-container')?.dispatchEvent(event);
+    };
+
+    // Initially cursor hidden
+    expect(cursor.visible).toBe(false);
+
+    // Wall Mode: Cursor visible
+    wallModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(true);
+
+    // Room Tool: Cursor visible
+    roomModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(true);
+
+    // Door Tool: Cursor visible
+    doorModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(true);
+
+    // Floor Tool: Cursor visible
+    floorModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(true);
+
+    // Delete Tool: Cursor HIDDEN (it uses crosshair/highlighting, not sphere cursor)
+    deleteModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(false);
+
+    // Toggle Delete OFF (Nothing active): Cursor hidden
+    deleteModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(false);
+  });
 });
