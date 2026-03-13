@@ -11,17 +11,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="ui-overlay">
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
-      <div class="control-group">
-        <label>Grid Size</label>
-        <input type="range" id="grid-size" min="10" max="50" value="20">
-        <span id="grid-size-val">20</span>
-      </div>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
       <button id="clear-walls" class="secondary-btn">Clear All</button>
       <div class="instructions">
-        <p>1. Toggle Wall Mode</p>
-        <p>2. Click to start wall</p>
-        <p>3. Click to finish wall</p>
+        <p>• Scroll to Zoom</p>
+        <p>• Left Click to Draw</p>
+        <p>• Right Click to Orbit</p>
       </div>
     </div>
   </div>
@@ -58,8 +53,6 @@ cursor.visible = false;
 sceneManager.getScene().add(cursor);
 
 // UI Elements
-const gridSizeInput = document.getElementById('grid-size') as HTMLInputElement;
-const gridSizeVal = document.getElementById('grid-size-val')!;
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
 const jsonContent = document.getElementById('json-content')!;
 
@@ -72,7 +65,6 @@ updateJSONOverlay();
 function updateJSONOverlay() {
     if (!jsonContent) return;
     const data = {
-        gridSize: currentGridSize,
         walls: wallManager.getData()
     };
     jsonContent.textContent = JSON.stringify(data, null, 2);
@@ -80,10 +72,9 @@ function updateJSONOverlay() {
 
 function updateApplicationSize(newSize: number) {
     currentGridSize = newSize;
-    gridSizeInput.value = currentGridSize.toString();
-    gridSizeVal.textContent = currentGridSize.toString();
     grid.updateSize(currentGridSize, currentGridSize);
     floor.updateSize(currentGridSize);
+    updateJSONOverlay();
 }
 
 function checkGridExpansion(point?: THREE.Vector3) {
@@ -94,9 +85,9 @@ function checkGridExpansion(point?: THREE.Vector3) {
     const maxExtent = Math.max(wallExtent, cursorExtent);
     const requiredSize = (maxExtent * 2) + 2; // +2 for padding
     
-    // Min size of 20, Max size of 100 for safety (can be adjusted)
+    // Min size of 20, Max size of 200 for safety (can be adjusted)
     const minSize = 20;
-    const maxSize = 100;
+    const maxSize = 200; // Increased limit for "infinite" feel
     
     let targetSize = Math.max(minSize, Math.ceil(requiredSize / 10) * 10);
     targetSize = Math.min(targetSize, maxSize);
@@ -107,10 +98,6 @@ function checkGridExpansion(point?: THREE.Vector3) {
 }
 
 // UI Event Listeners
-gridSizeInput.addEventListener('input', () => {
-    updateApplicationSize(parseInt(gridSizeInput.value));
-});
-
 wallModeBtn.addEventListener('click', () => {
     isWallMode = !isWallMode;
     wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
@@ -191,3 +178,6 @@ function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
     const angle = Math.atan2(end.z - start.z, end.x - start.x);
     previewWall.rotation.y = -angle;
 }
+
+// Initial state
+updateJSONOverlay();
