@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 export interface DoorData {
     position: { x: number, z: number };
-    direction: 'horizontal' | 'vertical';
+    angle: number;
 }
 
 export class DoorManager {
@@ -20,11 +20,11 @@ export class DoorManager {
         this.scene.add(this.doors);
     }
 
-    public addDoor(position: THREE.Vector3, direction: 'horizontal' | 'vertical') {
+    public addDoor(position: THREE.Vector3, angle: number) {
         const index = this.doorDataList.length;
         this.doorDataList.push({
             position: { x: position.x, z: position.z },
-            direction
+            angle
         });
 
         const doorModel = this.createDoorModel();
@@ -34,9 +34,7 @@ export class DoorManager {
         doorModel.position.copy(position);
         doorModel.position.y = 0; // The model itself will be offset correctly
 
-        if (direction === 'vertical') {
-            doorModel.rotation.y = Math.PI / 2;
-        }
+        doorModel.rotation.y = angle;
 
         this.doors.add(doorModel);
     }
@@ -158,7 +156,7 @@ export class DoorManager {
         data.forEach(door => {
             this.addDoor(
                 new THREE.Vector3(door.position.x, 0, door.position.z),
-                door.direction
+                door.angle
             );
         });
     }

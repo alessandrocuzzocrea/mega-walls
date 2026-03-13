@@ -9,6 +9,16 @@ vi.mock('three', () => {
         set(x: number, y: number, z: number) { this.x = x ?? 0; this.y = y ?? 0; this.z = z ?? 0; return this; }
         copy(v: {x: number, y: number, z: number}) { this.x = v.x ?? 0; this.y = v.y ?? 0; this.z = v.z ?? 0; return this; }
         add(v: {x: number, y: number, z: number}) { this.x += v.x ?? 0; this.y += v.y ?? 0; this.z += v.z ?? 0; return this; }
+        sub(v: {x: number, y: number, z: number}) { this.x -= v.x ?? 0; this.y -= v.y ?? 0; this.z -= v.z ?? 0; return this; }
+        dot(v: {x: number, y: number, z: number}) { return this.x * v.x + this.y * v.y + this.z * v.z; }
+        crossVectors(a: any, b: any) {
+            this.x = a.y * b.z - a.z * b.y;
+            this.y = a.z * b.x - a.x * b.z;
+            this.z = a.x * b.y - a.y * b.x;
+            return this;
+        }
+        length() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); }
+        normalize() { const l = this.length(); if (l > 0) { this.x /= l; this.y /= l; this.z /= l; } return this; }
         multiplyScalar(s: number) { this.x *= s; this.y *= s; this.z *= s; return this; }
         clone() { return new Vector3Mock(this.x, this.y, this.z); }
         distanceTo(v: {x: number, y: number, z: number}) { 
@@ -104,5 +114,28 @@ describe('WallManager Splitting', () => {
         wallManager.splitWallAt({ x: 0, z: 0 }, { x: 1, z: 0 });
         
         expect(wallManager.getData().length).toBe(0);
+    });
+
+    it('should split a diagonal wall', () => {
+        // Wall from (0,0,0) to (2,0,2) -> length is sqrt(8) ~ 2.82
+        wallManager.addWall(new THREE.Vector3(0, 0, 0), new THREE.Vector3(2, 0, 2));
+        
+        // Split center segment: from (0.5, 0, 0.5) to (1.5, 0, 1.5)
+        // This is a 1-unit segment in the middle
+        wallManager.splitWallAt({ x: 0.5, z: 0.5 }, { x: 1.5, z: 1.5 });
+        
+        const data = wallManager.getData();
+        expect(data.length).toBe(2);
+        
+        const eps = 0.001;
+        const hasStart = data.some(w => 
+            Math.abs(w.start.x - 0) < eps && Math.abs(w.end.x - 0.5) < eps
+        );
+        const hasEnd = data.some(w => 
+            Math.abs(w.start.x - 1.5) < eps && Math.abs(w.end.x - 2) < eps
+        );
+        
+        expect(hasStart).toBe(true);
+        expect(hasEnd).toBe(true);
     });
 });

@@ -195,75 +195,61 @@ export class WallManager {
 
     public splitWallAt(p1: { x: number, z: number }, p2: { x: number, z: number }) {
         let i = 0;
-        const sMinX = Math.min(p1.x, p2.x);
-        const sMaxX = Math.max(p1.x, p2.x);
-        const sMinZ = Math.min(p1.z, p2.z);
-        const sMaxZ = Math.max(p1.z, p2.z);
+        const splitStart = new THREE.Vector3(p1.x, 0, p1.z);
+        const splitEnd = new THREE.Vector3(p2.x, 0, p2.z);
+        const splitDir = splitEnd.clone().sub(splitStart);
+        const splitLen = splitDir.length();
+        const splitDirNorm = splitDir.clone().normalize();
 
         while (i < this.wallDataList.length) {
             const wall = this.wallDataList[i];
-            
-            const dxW = wall.end.x - wall.start.x;
-            const dzW = wall.end.z - wall.start.z;
-            const dxS = p2.x - p1.x;
-            const dzS = p2.z - p1.z;
-            
-            // Collinear check
-            const crossProduct = dxW * dzS - dzW * dxS;
-            if (Math.abs(crossProduct) > 0.0001) {
+            const wallStart = new THREE.Vector3(wall.start.x, 0, wall.start.z);
+            const wallEnd = new THREE.Vector3(wall.end.x, 0, wall.end.z);
+            const wallDir = wallEnd.clone().sub(wallStart);
+            const wallLen = wallDir.length();
+            const wallDirNorm = wallDir.clone().normalize();
+
+            // Collinear and same-line check
+            const dot = Math.abs(wallDirNorm.dot(splitDirNorm));
+            if (dot < 0.999) { // Not parallel
                 i++;
                 continue;
             }
 
-            // Same line check
-            const dxWS = p1.x - wall.start.x;
-            const dzWS = p1.z - wall.start.z;
-            const crossProduct2 = dxW * dzWS - dzW * dxWS;
-            if (Math.abs(crossProduct2) > 0.0001) {
+            const vToSplit = splitStart.clone().sub(wallStart);
+            const cross = new THREE.Vector3().crossVectors(wallDirNorm, vToSplit);
+            if (cross.length() > 0.001) { // Not on same line
                 i++;
                 continue;
             }
 
-            const wMinX = Math.min(wall.start.x, wall.end.x);
-            const wMaxX = Math.max(wall.start.x, wall.end.x);
-            const wMinZ = Math.min(wall.start.z, wall.end.z);
-            const wMaxZ = Math.max(wall.start.z, wall.end.z);
-
-            const isHorizontal = Math.abs(dzW) < 0.0001;
-            const isVertical = Math.abs(dxW) < 0.0001;
+            // Project split segment onto wall segment
+            const tStart = vToSplit.dot(wallDirNorm);
+            const tEnd = splitEnd.clone().sub(wallStart).dot(wallDirNorm);
             
-            let overlaps = false;
-            if (isHorizontal) {
-                overlaps = sMinX < wMaxX - 0.0001 && sMaxX > wMinX + 0.0001;
-            } else if (isVertical) {
-                overlaps = sMinZ < wMaxZ - 0.0001 && sMaxZ > wMinZ + 0.0001;
-            } else {
-                overlaps = (sMinX < wMaxX - 0.0001 && sMaxX > wMinX + 0.0001) && 
-                           (sMinZ < wMaxZ - 0.0001 && sMaxZ > wMinZ + 0.0001);
-            }
+            const minT = Math.min(tStart, tEnd);
+            const maxT = Math.max(tStart, tEnd);
 
-            if (overlaps) {
-                // Store the original wall data before removing
+            // Check for overlap
+            const overlapMin = Math.max(0, minT);
+            const overlapMax = Math.min(wallLen, maxT);
+
+            if (overlapMax - overlapMin > 0.001) {
+                // Overlap exists!
                 const originalWall = { ...wall };
                 this.removeWallAtIndex(i);
-                
-                if (isHorizontal) {
-                    if (sMinX > wMinX + 0.0001) {
-                        this.addWall(new THREE.Vector3(wMinX, 0, originalWall.start.z), new THREE.Vector3(sMinX, 0, originalWall.start.z));
-                    }
-                    if (sMaxX < wMaxX - 0.0001) {
-                        this.addWall(new THREE.Vector3(sMaxX, 0, originalWall.start.z), new THREE.Vector3(wMaxX, 0, originalWall.start.z));
-                    }
-                } else if (isVertical) {
-                    if (sMinZ > wMinZ + 0.0001) {
-                        this.addWall(new THREE.Vector3(originalWall.start.x, 0, wMinZ), new THREE.Vector3(originalWall.start.x, 0, sMinZ));
-                    }
-                    if (sMaxZ < wMaxZ - 0.0001) {
-                        this.addWall(new THREE.Vector3(originalWall.start.x, 0, sMaxZ), new THREE.Vector3(originalWall.start.x, 0, wMaxZ));
-                    }
+
+                // Add remaining segments
+                if (overlapMin > 0.001) {
+                    const segmentEnd = wallStart.clone().add(wallDirNorm.clone().multiplyScalar(overlapMin));
+                    this.addWall(wallStart, segmentEnd);
                 }
-                
-                i = 0; // Restart to handle potential merges or multiple overlaps
+                if (overlapMax < wallLen - 0.001) {
+                    const segmentStart = wallStart.clone().add(wallDirNorm.clone().multiplyScalar(overlapMax));
+                    this.addWall(segmentStart, wallEnd);
+                }
+
+                i = 0; // Restart to handle multiple potential splits/merges
                 continue;
             }
             i++;

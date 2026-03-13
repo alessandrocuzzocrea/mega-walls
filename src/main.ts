@@ -396,12 +396,12 @@ container.addEventListener('mousedown', (event) => {
         if (point) {
             // In one-click mode, we check if the preview is visible and has data
             if (previewDoor.visible && previewDoor.userData.placeData) {
-                const { p1, p2, doorPos, direction } = previewDoor.userData.placeData;
+                const { p1, p2, doorPos, angle } = previewDoor.userData.placeData;
                 
                 // Split walls at this location
                 wallManager.splitWallAt(p1, p2);
                 
-                doorManager.addDoor(doorPos, direction);
+                doorManager.addDoor(doorPos, angle);
                 updateJSONOverlay();
                 
                 // Keep tool active, but the preview will refresh on next mousemove
@@ -581,14 +581,14 @@ function updatePreviewDoor(mousePoint: THREE.Vector3) {
                 p1: { x: p1.x, z: p1.z },
                 p2: { x: p2.x, z: p2.z },
                 doorPos,
-                direction: Math.abs(wallDirNorm.x) > 0.5 ? 'horizontal' : 'vertical'
+                angle: -Math.atan2(wallDirNorm.z, wallDirNorm.x)
             };
         }
     }
 
     if (bestSnapshot) {
-        previewDoor.position.copy(bestSnapshot.doorPos);
-        previewDoor.rotation.y = bestSnapshot.direction === 'vertical' ? Math.PI / 2 : 0;
+        previewDoor.position.copy(bestSnapshot.bestPos || bestSnapshot.doorPos);
+        previewDoor.rotation.y = bestSnapshot.angle;
         previewDoor.visible = true;
         previewDoor.userData.placeData = bestSnapshot;
     } else {

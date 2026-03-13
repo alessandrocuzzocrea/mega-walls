@@ -9,6 +9,16 @@ vi.mock('three', () => {
         set(x: number, y: number, z: number) { this.x = x ?? 0; this.y = y ?? 0; this.z = z ?? 0; return this; }
         copy(v: {x: number, y: number, z: number}) { this.x = v.x ?? 0; this.y = v.y ?? 0; this.z = v.z ?? 0; return this; }
         add(v: {x: number, y: number, z: number}) { this.x += v.x ?? 0; this.y += v.y ?? 0; this.z += v.z ?? 0; return this; }
+        sub(v: {x: number, y: number, z: number}) { this.x -= v.x ?? 0; this.y -= v.y ?? 0; this.z -= v.z ?? 0; return this; }
+        dot(v: {x: number, y: number, z: number}) { return this.x * v.x + this.y * v.y + this.z * v.z; }
+        crossVectors(a: any, b: any) {
+            this.x = a.y * b.z - a.z * b.y;
+            this.y = a.z * b.x - a.x * b.z;
+            this.z = a.x * b.y - a.y * b.x;
+            return this;
+        }
+        length() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); }
+        normalize() { const l = this.length(); if (l > 0) { this.x /= l; this.y /= l; this.z /= l; } return this; }
         multiplyScalar(s: number) { this.x *= s; this.y *= s; this.z *= s; return this; }
         clone() { return new Vector3Mock(this.x, this.y, this.z); }
         distanceTo(v: {x: number, y: number, z: number}) { 
