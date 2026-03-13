@@ -17,7 +17,6 @@ export class FloorManager {
     private scene: THREE.Scene;
     private floors: THREE.Group;
     private floorDataList: FloorData[] = [];
-    private tileDataList: TileData[] = [];
     private occupiedCells: Set<string> = new Set();
     private isWireframe: boolean = false;
 
@@ -44,15 +43,9 @@ export class FloorManager {
         // Merge cells into rectangles
         const rectangles = this.mergeCellsIntoRectangles(newCells);
         rectangles.forEach(rect => {
-            if (rect.width === 1 && rect.depth === 1) {
-                const data: TileData = { x: rect.x, z: rect.z };
-                this.tileDataList.push(data);
-                this.createFloorMesh({ ...rect }, this.tileDataList.length - 1, 'tile');
-            } else {
-                const data: FloorData = { ...rect };
-                this.floorDataList.push(data);
-                this.createFloorMesh(data, this.floorDataList.length - 1, 'floor');
-            }
+            const data: FloorData = { ...rect };
+            this.floorDataList.push(data);
+            this.createFloorMesh(data, this.floorDataList.length - 1);
         });
     }
 
@@ -106,7 +99,7 @@ export class FloorManager {
         return result;
     }
 
-    private createFloorMesh(data: FloorData, index: number, type: 'floor' | 'tile') {
+    private createFloorMesh(data: FloorData, index: number) {
         const geometry = new THREE.PlaneGeometry(data.width, data.depth);
         const material = new THREE.MeshStandardMaterial({
             color: 0x8B4513,
@@ -122,8 +115,7 @@ export class FloorManager {
         mesh.position.set(data.x + data.width / 2, 0.005, data.z + data.depth / 2);
         mesh.receiveShadow = true;
         mesh.userData.dataIndex = index;
-        mesh.userData.type = type;
-        mesh.name = type;
+        mesh.name = 'floor';
 
         this.floors.add(mesh);
     }
@@ -235,8 +227,7 @@ export class FloorManager {
 
     public getData() {
         return {
-            floors: this.floorDataList,
-            tiles: this.tileDataList
+            floors: this.floorDataList
         };
     }
 
@@ -259,7 +250,6 @@ export class FloorManager {
 
     public removeFloor(floor: THREE.Object3D) {
         const index = floor.userData.dataIndex;
-        const type = floor.userData.type as 'floor' | 'tile';
         
         if (index === undefined) return;
 
@@ -270,23 +260,17 @@ export class FloorManager {
         this.floors.remove(mesh);
 
         // Update data arrays
-        if (type === 'floor') {
-            const data = this.floorDataList[index];
-            for (let dx = 0; dx < data.width; dx++) {
-                for (let dz = 0; dz < data.depth; dz++) {
-                    this.occupiedCells.delete(`${data.x + dx},${data.z + dz}`);
-                }
+        const data = this.floorDataList[index];
+        for (let dx = 0; dx < data.width; dx++) {
+            for (let dz = 0; dz < data.depth; dz++) {
+                this.occupiedCells.delete(`${data.x + dx},${data.z + dz}`);
             }
-            this.floorDataList.splice(index, 1);
-        } else {
-            const data = this.tileDataList[index];
-            this.occupiedCells.delete(`${data.x},${data.z}`);
-            this.tileDataList.splice(index, 1);
         }
+        this.floorDataList.splice(index, 1);
 
-        // Re-index remaining floors/tiles of the same type
+        // Re-index remaining floors
         this.floors.children.forEach(child => {
-            if (child.userData.type === type && child.userData.dataIndex > index) {
+            if (child.userData.dataIndex > index) {
                 child.userData.dataIndex--;
             }
         });
@@ -302,7 +286,6 @@ export class FloorManager {
 
     public clearFloors() {
         this.floorDataList = [];
-        this.tileDataList = [];
         this.occupiedCells.clear();
         while (this.floors.children.length > 0) {
             const floor = this.floors.children[0] as THREE.Mesh;
@@ -312,13 +295,10 @@ export class FloorManager {
         }
     }
 
-    public resetAndLoad(floors: FloorData[], tiles: TileData[] = []) {
+    public resetAndLoad(floors: FloorData[]) {
         this.clearFloors();
         floors.forEach(floor => {
             this.addFloor(floor.x, floor.z, floor.width, floor.depth);
-        });
-        tiles.forEach(tile => {
-            this.addTile(tile.x, tile.z);
         });
     }
 }

@@ -72,14 +72,15 @@ describe('FloorManager Overlaps', () => {
     it('should NOT allow overlapping tiles (duplicate tiles)', () => {
         // Add tile at (0,0)
         floorManager.addTile(0, 0);
-        expect(floorManager.getData().tiles.length).toBe(1);
+        const data1 = floorManager.getData();
+        expect(data1.floors.length).toBe(1);
         expect(floorManager.getFloors().length).toBe(1);
 
         // Add another tile at (0,0) - should NOT be added as it's a complete duplicate
         floorManager.addTile(0, 0);
         
-        const data = floorManager.getData();
-        expect(data.tiles.length).toBe(1);
+        const data2 = floorManager.getData();
+        expect(data2.floors.length).toBe(1);
         expect(floorManager.getFloors().length).toBe(1);
     });
 
@@ -93,17 +94,10 @@ describe('FloorManager Overlaps', () => {
         floorManager.addFloor(1, 0, 2, 2);
 
         const data = floorManager.getData();
-        // Since (1,0) to (2,2) overlaps with (0,0) to (2,2)
-        // The new parts are essentially a 1x2 strip at x=2
         // Total occupied cells should be 6
-        
-        // We'll verify by checking a new helper 'isCellOccupied' 
-        // or by counting the total area if we implement merging correctly.
-        // For now, let's assume it adds the new parts as a separate floor or merged.
         
         let totalArea = 0;
         data.floors.forEach(f => totalArea += f.width * f.depth);
-        data.tiles.forEach(() => totalArea += 1);
         
         expect(totalArea).toBe(6);
     });
