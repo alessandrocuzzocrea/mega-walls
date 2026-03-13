@@ -64,4 +64,8 @@ export class SceneManager {
     public getCamera(): THREE.PerspectiveCamera {
         return this.camera;
     }
+
+    public setControlsEnabled(enabled: boolean) {
+        this.controls.enabled = enabled;
+    }
 }

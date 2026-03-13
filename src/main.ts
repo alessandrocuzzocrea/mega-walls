@@ -70,6 +70,7 @@ wallModeBtn.addEventListener('click', () => {
     wallModeBtn.textContent = `Wall Mode: ${isWallMode ? 'ON' : 'OFF'}`;
     wallModeBtn.classList.toggle('active', isWallMode);
     cursor.visible = isWallMode;
+    sceneManager.setControlsEnabled(!isWallMode);
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
