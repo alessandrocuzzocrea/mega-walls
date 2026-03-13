@@ -14,6 +14,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
+      <button id="room-mode-btn" class="room-btn">Room Tool: OFF</button>
       <button id="door-mode-btn" class="door-btn">Door Tool: OFF</button>
       <div class="tool-group">
         <button id="floor-mode" class="primary-btn">Floor Tool: OFF</button>
@@ -52,11 +53,13 @@ let isWallMode = false;
 let isDoorMode = false;
 let isDeleteMode = false;
 let isFloorMode = false;
+let isRoomMode = false;
 let floorSubMode: 'rect' | 'fill' = 'rect';
 
 let wallStartPoint: THREE.Vector3 | null = null;
 let doorStartPoint: THREE.Vector3 | null = null;
 let floorStartPoint: THREE.Vector3 | null = null;
+let roomStartPoint: THREE.Vector3 | null = null;
 let hoveredObject: THREE.Object3D | null = null;
 let isWireframe = false;
 
@@ -125,8 +128,42 @@ previewDoor.add(ph);
 previewDoor.visible = false;
 sceneManager.getScene().add(previewDoor);
 
+// Room Preview
+const previewRoom = new THREE.Group();
+const previewRoomWalls: THREE.Mesh[] = [];
+for (let i = 0; i < 4; i++) {
+    const w = new THREE.Mesh(
+        new THREE.BoxGeometry(1, 2.5, 0.2),
+        new THREE.MeshStandardMaterial({ 
+            color: 0x10b981, 
+            transparent: true, 
+            opacity: 0.5,
+            polygonOffset: true,
+            polygonOffsetFactor: -1,
+            polygonOffsetUnits: -1
+        })
+    );
+    previewRoomWalls.push(w);
+    previewRoom.add(w);
+}
+const previewRoomFloor = new THREE.Mesh(
+    new THREE.PlaneGeometry(1, 1),
+    new THREE.MeshStandardMaterial({ 
+        color: 0x10b981, 
+        transparent: true, 
+        opacity: 0.3,
+        side: THREE.DoubleSide
+    })
+);
+previewRoomFloor.rotation.x = -Math.PI / 2;
+previewRoomFloor.position.y = 0.01;
+previewRoom.add(previewRoomFloor);
+previewRoom.visible = false;
+sceneManager.getScene().add(previewRoom);
+
 // UI Elements
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+const roomModeBtn = document.getElementById('room-mode-btn') as HTMLButtonElement;
 const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
 const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
 const floorSubTools = document.getElementById('floor-sub-tools')!;
@@ -216,6 +253,9 @@ wallModeBtn.addEventListener('click', () => {
     wallModeBtn.classList.toggle('active', isWallMode);
     
     if (isWallMode) {
+        isRoomMode = false;
+        roomModeBtn.textContent = 'Room Tool: OFF';
+        roomModeBtn.classList.remove('active');
         isDoorMode = false;
         doorModeBtn.textContent = 'Door Tool: OFF';
         doorModeBtn.classList.remove('active');
@@ -226,11 +266,38 @@ wallModeBtn.addEventListener('click', () => {
     }
 
     cursor.visible = isWallMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
         checkGridExpansion(); // Final check to contract if needed
+    }
+});
+
+roomModeBtn.addEventListener('click', () => {
+    isRoomMode = !isRoomMode;
+    if (isRoomMode) {
+        isWallMode = false;
+        wallModeBtn.classList.remove('active');
+        wallModeBtn.textContent = 'Wall Mode: OFF';
+        isDoorMode = false;
+        doorModeBtn.textContent = 'Door Tool: OFF';
+        doorModeBtn.classList.remove('active');
+        isFloorMode = false;
+        floorModeBtn.classList.remove('active');
+        floorModeBtn.textContent = 'Floor Tool: OFF';
+        floorSubTools.classList.add('hidden');
+        isDeleteMode = false;
+        deleteModeBtn.classList.remove('active');
+        deleteModeBtn.textContent = 'Delete Tool: OFF';
+    }
+    roomModeBtn.textContent = `Room Tool: ${isRoomMode ? 'ON' : 'OFF'}`;
+    roomModeBtn.classList.toggle('active', isRoomMode);
+    cursor.visible = isRoomMode;
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
+    if (!isRoomMode) {
+        roomStartPoint = null;
+        previewRoom.visible = false;
     }
 });
 
@@ -240,6 +307,9 @@ doorModeBtn.addEventListener('click', () => {
         isWallMode = false;
         wallModeBtn.classList.remove('active');
         wallModeBtn.textContent = 'Wall Mode: OFF';
+        isRoomMode = false;
+        roomModeBtn.classList.remove('active');
+        roomModeBtn.textContent = 'Room Tool: OFF';
         isFloorMode = false;
         floorModeBtn.classList.remove('active');
         floorModeBtn.textContent = 'Floor Tool: OFF';
@@ -251,7 +321,7 @@ doorModeBtn.addEventListener('click', () => {
     doorModeBtn.textContent = `Door Tool: ${isDoorMode ? 'ON' : 'OFF'}`;
     doorModeBtn.classList.toggle('active', isDoorMode);
     cursor.visible = isDoorMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
     if (!isDoorMode) {
         doorStartPoint = null;
         previewDoor.visible = false;
@@ -264,6 +334,9 @@ floorModeBtn.addEventListener('click', () => {
         isWallMode = false;
         wallModeBtn.classList.remove('active');
         wallModeBtn.textContent = 'Wall Mode: OFF';
+        isRoomMode = false;
+        roomModeBtn.classList.remove('active');
+        roomModeBtn.textContent = 'Room Tool: OFF';
         isDeleteMode = false;
         deleteModeBtn.classList.remove('active');
         deleteModeBtn.textContent = 'Delete Tool: OFF';
@@ -274,7 +347,7 @@ floorModeBtn.addEventListener('click', () => {
     floorModeBtn.textContent = `Floor Tool: ${isFloorMode ? 'ON' : 'OFF'}`;
     floorModeBtn.classList.toggle('active', isFloorMode);
     cursor.visible = isFloorMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode && !isRoomMode);
     if (!isFloorMode) {
         floorStartPoint = null;
         previewFloor.visible = false;
@@ -299,6 +372,9 @@ deleteModeBtn.addEventListener('click', () => {
         isWallMode = false;
         wallModeBtn.classList.remove('active');
         wallModeBtn.textContent = 'Wall Mode: OFF';
+        isRoomMode = false;
+        roomModeBtn.classList.remove('active');
+        roomModeBtn.textContent = 'Room Tool: OFF';
         isFloorMode = false;
         floorModeBtn.classList.remove('active');
         floorModeBtn.textContent = 'Floor Tool: OFF';
@@ -309,7 +385,7 @@ deleteModeBtn.addEventListener('click', () => {
     }
     deleteModeBtn.textContent = `Delete Tool: ${isDeleteMode ? 'ON' : 'OFF'}`;
     deleteModeBtn.classList.toggle('active', isDeleteMode);
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isDoorMode && !isFloorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isDoorMode && !isFloorMode && !isRoomMode);
     
     if (!isDeleteMode && hoveredObject) {
         if (hoveredObject.name === 'wall') {
@@ -331,6 +407,8 @@ wireframeBtn.addEventListener('click', () => {
     floor.setWireframe(isWireframe);
     (previewWall.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
     (previewFloor.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
+    previewRoomWalls.forEach(w => (w.material as THREE.MeshStandardMaterial).wireframe = isWireframe);
+    (previewRoomFloor.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
 });
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {
@@ -360,6 +438,18 @@ container.addEventListener('mousedown', (event) => {
             checkGridExpansion();
             updateJSONOverlay();
             hoveredObject = null;
+        }
+        return;
+    }
+
+    if (isRoomMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            if (!roomStartPoint) {
+                roomStartPoint = snappedPoint;
+                checkGridExpansion(snappedPoint);
+            }
         }
         return;
     }
@@ -456,6 +546,26 @@ container.addEventListener('mousemove', (event) => {
         return;
     }
 
+    if (isRoomMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            cursor.position.copy(snappedPoint);
+            cursor.visible = true;
+
+            if (roomStartPoint) {
+                updatePreviewRoom(roomStartPoint, snappedPoint);
+                previewRoom.visible = true;
+            } else {
+                previewRoom.visible = false;
+            }
+            checkGridExpansion(snappedPoint);
+        } else {
+            cursor.visible = false;
+        }
+        return;
+    }
+
     if (isFloorMode) {
         const point = inputManager.getMousePosition(event);
         if (point) {
@@ -515,6 +625,42 @@ container.addEventListener('mousemove', (event) => {
     }
 });
 
+container.addEventListener('mouseup', (event) => {
+    if (isRoomMode && roomStartPoint) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            const xMin = Math.min(roomStartPoint.x, snappedPoint.x);
+            const xMax = Math.max(roomStartPoint.x, snappedPoint.x);
+            const zMin = Math.min(roomStartPoint.z, snappedPoint.z);
+            const zMax = Math.max(roomStartPoint.z, snappedPoint.z);
+
+            const width = xMax - xMin;
+            const depth = zMax - zMin;
+
+            if (width > 0 && depth > 0) {
+                // Add 4 walls
+                const p1 = new THREE.Vector3(xMin, 0, zMin);
+                const p2 = new THREE.Vector3(xMax, 0, zMin);
+                const p3 = new THREE.Vector3(xMax, 0, zMax);
+                const p4 = new THREE.Vector3(xMin, 0, zMax);
+
+                wallManager.addWall(p1, p2);
+                wallManager.addWall(p2, p3);
+                wallManager.addWall(p3, p4);
+                wallManager.addWall(p4, p1);
+
+                // Add 1 floor
+                floorManager.addFloor(xMin, zMin, width, depth);
+
+                updateJSONOverlay();
+            }
+        }
+        roomStartPoint = null;
+        previewRoom.visible = false;
+    }
+});
+
 function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
     const length = start.distanceTo(end);
     if (length < 0.1) {
@@ -546,6 +692,47 @@ function updatePreviewFloor(start: THREE.Vector3, end: THREE.Vector3) {
         0.01,
         (start.z + end.z) / 2
     );
+}
+
+function updatePreviewRoom(start: THREE.Vector3, end: THREE.Vector3) {
+    const xMin = Math.min(start.x, end.x);
+    const xMax = Math.max(start.x, end.x);
+    const zMin = Math.min(start.z, end.z);
+    const zMax = Math.max(start.z, end.z);
+
+    const width = xMax - xMin;
+    const depth = zMax - zMin;
+
+    if (width < 0.1 || depth < 0.1) {
+        previewRoom.visible = false;
+        return;
+    }
+
+    // Points
+    const p1 = new THREE.Vector3(xMin, 0, zMin);
+    const p2 = new THREE.Vector3(xMax, 0, zMin);
+    const p3 = new THREE.Vector3(xMax, 0, zMax);
+    const p4 = new THREE.Vector3(xMin, 0, zMax);
+
+    const points = [p1, p2, p2, p3, p3, p4, p4, p1];
+    
+    for (let i = 0; i < 4; i++) {
+        const s = points[i * 2];
+        const e = points[i * 2 + 1];
+        const length = s.distanceTo(e);
+        const wall = previewRoomWalls[i];
+        
+        wall.scale.x = length + 0.2;
+        wall.position.copy(s.clone().add(e).multiplyScalar(0.5));
+        wall.position.y = 1.25;
+        const angle = Math.atan2(e.z - s.z, e.x - s.x);
+        wall.rotation.y = -angle;
+    }
+
+    previewRoomFloor.scale.set(width, depth, 1);
+    previewRoomFloor.position.set(xMin + width / 2, 0.01, zMin + depth / 2);
+    
+    previewRoom.visible = true;
 }
 
 function updatePreviewDoor(mousePoint: THREE.Vector3) {
