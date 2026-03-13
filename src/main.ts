@@ -13,6 +13,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <h1>Mega-Walls Editor</h1>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
       <button id="delete-mode" class="danger-btn">Delete Tool: OFF</button>
+      <button id="toggle-wireframe" class="secondary-btn">Wireframe: OFF</button>
       <button id="clear-walls" class="secondary-btn">Clear All</button>
       <div class="instructions">
         <p>• Scroll to Zoom</p>
@@ -39,6 +40,7 @@ let isWallMode = false;
 let isDeleteMode = false;
 let wallStartPoint: THREE.Vector3 | null = null;
 let hoveredWall: THREE.Object3D | null = null;
+let isWireframe = false;
 
 // Visual Helpers
 const previewWall = new THREE.Mesh(
@@ -65,6 +67,7 @@ sceneManager.getScene().add(cursor);
 // UI Elements
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
 const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
+const wireframeBtn = document.getElementById('toggle-wireframe') as HTMLButtonElement;
 const jsonContent = document.getElementById('json-content')!;
 
 // Navigation & Setup State
@@ -162,6 +165,16 @@ deleteModeBtn.addEventListener('click', () => {
         wallManager.highlightWall(hoveredWall, false);
         hoveredWall = null;
     }
+});
+
+wireframeBtn.addEventListener('click', () => {
+    isWireframe = !isWireframe;
+    wireframeBtn.textContent = `Wireframe: ${isWireframe ? 'ON' : 'OFF'}`;
+    wireframeBtn.classList.toggle('active', isWireframe);
+    
+    wallManager.setWireframe(isWireframe);
+    floor.setWireframe(isWireframe);
+    (previewWall.material as THREE.MeshStandardMaterial).wireframe = isWireframe;
 });
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {

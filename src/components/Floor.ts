@@ -23,4 +23,8 @@ export class Floor {
         this.mesh.geometry.dispose();
         this.mesh.geometry = new THREE.PlaneGeometry(size, size);
     }
+
+    public setWireframe(enabled: boolean) {
+        (this.mesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
+    }
 }

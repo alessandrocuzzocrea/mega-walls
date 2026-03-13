@@ -11,6 +11,7 @@ export class WallManager {
     private wallDataList: WallData[] = [];
     private wallHeight: number = 2.5;
     private wallThickness: number = 0.2;
+    private isWireframe: boolean = false;
 
     constructor(scene: THREE.Scene) {
         this.scene = scene;
@@ -31,7 +32,8 @@ export class WallManager {
             emissive: new THREE.Color(0x000000),
             polygonOffset: true,
             polygonOffsetFactor: 1,
-            polygonOffsetUnits: 1
+            polygonOffsetUnits: 1,
+            wireframe: this.isWireframe
         });
         const wall = new THREE.Mesh(geometry, material);
         wall.userData.dataIndex = index;
@@ -112,6 +114,14 @@ export class WallManager {
                 new THREE.Vector3(wall.start.x, 0, wall.start.z),
                 new THREE.Vector3(wall.end.x, 0, wall.end.z)
             );
+        });
+    }
+
+    public setWireframe(enabled: boolean) {
+        this.isWireframe = enabled;
+        this.walls.children.forEach(child => {
+            const mesh = child as THREE.Mesh;
+            (mesh.material as THREE.MeshStandardMaterial).wireframe = enabled;
         });
     }
 
