@@ -24,11 +24,14 @@ export class WallManager {
             start: { x: start.x, z: start.z },
             end: { x: end.x, z: end.z }
         });
-        const length = start.distanceTo(end);
+        const length = start.distanceTo(end) + this.wallThickness;
         const geometry = new THREE.BoxGeometry(length, this.wallHeight, this.wallThickness);
         const material = new THREE.MeshStandardMaterial({ 
             color: 0xcccccc,
-            emissive: new THREE.Color(0x000000)
+            emissive: new THREE.Color(0x000000),
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
         });
         const wall = new THREE.Mesh(geometry, material);
         wall.userData.dataIndex = index;

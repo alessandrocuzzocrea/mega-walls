@@ -43,7 +43,14 @@ let hoveredWall: THREE.Object3D | null = null;
 // Visual Helpers
 const previewWall = new THREE.Mesh(
     new THREE.BoxGeometry(1, 2.5, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0x646cff, transparent: true, opacity: 0.5 })
+    new THREE.MeshStandardMaterial({ 
+        color: 0x646cff, 
+        transparent: true, 
+        opacity: 0.5,
+        polygonOffset: true,
+        polygonOffsetFactor: -1, // Preview slightly in front
+        polygonOffsetUnits: -1
+    })
 );
 previewWall.visible = false;
 sceneManager.getScene().add(previewWall);
@@ -243,7 +250,8 @@ function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
         return;
     }
 
-    previewWall.scale.x = length;
+    const thickness = 0.2;
+    previewWall.scale.x = length + thickness;
     previewWall.position.copy(start.clone().add(end).multiplyScalar(0.5));
     previewWall.position.y = 1.25; // 2.5 height / 2
 
