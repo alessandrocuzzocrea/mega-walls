@@ -432,6 +432,7 @@ container.addEventListener('mousedown', (event) => {
             checkGridExpansion(snappedPoint);
         } else {
             wallManager.addWall(wallStartPoint, snappedPoint);
+            splitWallsAroundDoors();
             checkGridExpansion(snappedPoint);
             updateJSONOverlay();
             wallStartPoint = null;
@@ -570,6 +571,7 @@ container.addEventListener('mouseup', (event) => {
                 wallManager.addWall(p2, p3);
                 wallManager.addWall(p3, p4);
                 wallManager.addWall(p4, p1);
+                splitWallsAroundDoors();
 
                 // Add 1 floor
                 floorManager.addFloor(xMin, zMin, width, depth);
@@ -581,6 +583,20 @@ container.addEventListener('mouseup', (event) => {
         previewRoom.visible = false;
     }
 });
+
+function splitWallsAroundDoors() {
+    const doors = doorManager.getData();
+    for (const door of doors) {
+        const angle = door.angle;
+        // Recover the wall direction from the stored door angle
+        // angle = -atan2(dz, dx), so direction = (cos(angle), -sin(angle))
+        const dx = Math.cos(angle) * 0.5;
+        const dz = -Math.sin(angle) * 0.5;
+        const p1 = { x: door.position.x - dx, z: door.position.z - dz };
+        const p2 = { x: door.position.x + dx, z: door.position.z + dz };
+        wallManager.splitWallAt(p1, p2);
+    }
+}
 
 function updatePreviewWall(start: THREE.Vector3, end: THREE.Vector3) {
     const length = start.distanceTo(end);

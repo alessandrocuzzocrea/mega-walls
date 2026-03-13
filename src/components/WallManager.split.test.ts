@@ -138,4 +138,36 @@ describe('WallManager Splitting', () => {
         expect(hasStart).toBe(true);
         expect(hasEnd).toBe(true);
     });
+
+    it('should split a wall drawn through an existing door', () => {
+        // Simulate: door at (2.5, 0, 0) with angle 0 (horizontal)
+        // Door segment runs from (2, 0) to (3, 0)
+        const doorAngle = 0;
+        const doorPos = { x: 2.5, z: 0 };
+        const dx = Math.cos(doorAngle) * 0.5;
+        const dz = -Math.sin(doorAngle) * 0.5;
+        const doorP1 = { x: doorPos.x - dx, z: doorPos.z - dz };
+        const doorP2 = { x: doorPos.x + dx, z: doorPos.z + dz };
+
+        // Wall from (0,0) to (5,0) - runs right through the door
+        wallManager.addWall(new THREE.Vector3(0, 0, 0), new THREE.Vector3(5, 0, 0));
+        expect(wallManager.getData().length).toBe(1);
+
+        // Split wall at door segment
+        wallManager.splitWallAt(doorP1, doorP2);
+
+        const data = wallManager.getData();
+        expect(data.length).toBe(2);
+
+        // Should have (0,0)-(2,0) and (3,0)-(5,0)
+        const hasLeft = data.some(w => 
+            Math.abs(w.start.x) < 0.001 && Math.abs(w.end.x - 2) < 0.001
+        );
+        const hasRight = data.some(w => 
+            Math.abs(w.start.x - 3) < 0.001 && Math.abs(w.end.x - 5) < 0.001
+        );
+        expect(hasLeft).toBe(true);
+        expect(hasRight).toBe(true);
+    });
 });
+
