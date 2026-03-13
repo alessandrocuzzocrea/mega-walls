@@ -167,6 +167,50 @@ export class FloorManager {
         };
     }
 
+    public getFloors(): THREE.Object3D[] {
+        return this.floors.children;
+    }
+
+    public highlightFloor(floor: THREE.Object3D | null, highlight: boolean) {
+        if (!floor) return;
+        const mesh = floor as THREE.Mesh;
+        const mat = mesh.material as THREE.MeshStandardMaterial;
+        if (highlight) {
+            mat.emissive.set(0xff0000);
+            mat.emissiveIntensity = 0.5;
+        } else {
+            mat.emissive.set(0x000000);
+            mat.emissiveIntensity = 0;
+        }
+    }
+
+    public removeFloor(floor: THREE.Object3D) {
+        const index = floor.userData.dataIndex;
+        const type = floor.userData.type as 'floor' | 'tile';
+        
+        if (index === undefined) return;
+
+        // Dispose mesh
+        const mesh = floor as THREE.Mesh;
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+        this.floors.remove(mesh);
+
+        // Update data arrays
+        if (type === 'floor') {
+            this.floorDataList.splice(index, 1);
+        } else {
+            this.tileDataList.splice(index, 1);
+        }
+
+        // Re-index remaining floors/tiles of the same type
+        this.floors.children.forEach(child => {
+            if (child.userData.type === type && child.userData.dataIndex > index) {
+                child.userData.dataIndex--;
+            }
+        });
+    }
+
     public setWireframe(enabled: boolean) {
         this.isWireframe = enabled;
         this.floors.children.forEach(child => {

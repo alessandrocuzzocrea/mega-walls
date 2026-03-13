@@ -52,7 +52,7 @@ let floorSubMode: 'rect' | 'fill' = 'rect';
 
 let wallStartPoint: THREE.Vector3 | null = null;
 let floorStartPoint: THREE.Vector3 | null = null;
-let hoveredWall: THREE.Object3D | null = null;
+let hoveredObject: THREE.Object3D | null = null;
 let isWireframe = false;
 
 // Visual Helpers
@@ -244,9 +244,13 @@ deleteModeBtn.addEventListener('click', () => {
     deleteModeBtn.classList.toggle('active', isDeleteMode);
     sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode);
     
-    if (!isDeleteMode && hoveredWall) {
-        wallManager.highlightWall(hoveredWall, false);
-        hoveredWall = null;
+    if (!isDeleteMode && hoveredObject) {
+        if (hoveredObject.name === 'wall') {
+            wallManager.highlightWall(hoveredObject, false);
+        } else {
+            floorManager.highlightFloor(hoveredObject, false);
+        }
+        hoveredObject = null;
     }
 });
 
@@ -272,12 +276,17 @@ document.getElementById('clear-walls')?.addEventListener('click', () => {
 // Mouse Interactions
 container.addEventListener('mousedown', (event) => {
     if (isDeleteMode) {
-        const intersect = inputManager.getObjectAtMouse(event, wallManager.getWalls());
+        const targets = [...wallManager.getWalls(), ...floorManager.getFloors()];
+        const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
-            wallManager.removeWall(intersect.object);
+            if (intersect.object.name === 'wall') {
+                wallManager.removeWall(intersect.object);
+            } else {
+                floorManager.removeFloor(intersect.object);
+            }
             checkGridExpansion();
             updateJSONOverlay();
-            hoveredWall = null;
+            hoveredObject = null;
         }
         return;
     }
@@ -332,18 +341,26 @@ container.addEventListener('mousedown', (event) => {
 
 container.addEventListener('mousemove', (event) => {
     if (isDeleteMode) {
-        const intersect = inputManager.getObjectAtMouse(event, wallManager.getWalls());
+        const targets = [...wallManager.getWalls(), ...floorManager.getFloors()];
+        const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
-            if (hoveredWall !== intersect.object) {
-                wallManager.highlightWall(hoveredWall, false);
-                hoveredWall = intersect.object;
-                wallManager.highlightWall(hoveredWall, true);
+            if (hoveredObject !== intersect.object) {
+                // Clear old highlight
+                if (hoveredObject) {
+                    if (hoveredObject.name === 'wall') wallManager.highlightWall(hoveredObject, false);
+                    else floorManager.highlightFloor(hoveredObject, false);
+                }
+                
+                // Set new highlight
+                hoveredObject = intersect.object;
+                if (hoveredObject.name === 'wall') wallManager.highlightWall(hoveredObject, true);
+                else floorManager.highlightFloor(hoveredObject, true);
             }
-        } else if (hoveredWall) {
-            wallManager.highlightWall(hoveredWall, false);
-            hoveredWall = null;
+        } else if (hoveredObject) {
+            if (hoveredObject.name === 'wall') wallManager.highlightWall(hoveredObject, false);
+            else floorManager.highlightFloor(hoveredObject, false);
+            hoveredObject = null;
         }
-        checkGridExpansion(snappedPoint);
         return;
     }
 
