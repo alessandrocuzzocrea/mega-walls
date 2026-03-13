@@ -13,6 +13,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="ui-overlay">
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
+      <button id="nav-mode" class="secondary-btn">Navigation: ON</button>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
       <button id="room-mode-btn" class="room-btn">Room Tool: OFF</button>
       <button id="door-mode-btn" class="door-btn">Door Tool: OFF</button>
@@ -49,8 +50,8 @@ const floorManager = new FloorManager(sceneManager.getScene());
 const inputManager = new InputManager(sceneManager.getCamera());
 
 // Interaction State
-type EditorTool = 'wall' | 'room' | 'door' | 'floor' | 'delete' | null;
-export let activeTool: EditorTool = null;
+type EditorTool = 'nav' | 'wall' | 'room' | 'door' | 'floor' | 'delete' | null;
+export let activeTool: EditorTool = 'nav';
 
 let wallStartPoint: THREE.Vector3 | null = null;
 let doorStartPoint: THREE.Vector3 | null = null;
@@ -159,6 +160,7 @@ previewRoom.visible = false;
 sceneManager.getScene().add(previewRoom);
 
 // UI Elements
+const navModeBtn = document.getElementById('nav-mode') as HTMLButtonElement;
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
 const roomModeBtn = document.getElementById('room-mode-btn') as HTMLButtonElement;
 const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
@@ -239,9 +241,9 @@ function checkGridExpansion(point?: THREE.Vector3) {
 }
 
 function setActiveTool(tool: EditorTool) {
-    // If clicking the same tool, toggle it off
-    if (activeTool === tool) {
-        activeTool = null;
+    // If clicking the same tool (and it's not nav), toggle it off to return to nav
+    if (activeTool === tool && tool !== 'nav') {
+        activeTool = 'nav';
     } else {
         activeTool = tool;
     }
@@ -264,6 +266,9 @@ function setActiveTool(tool: EditorTool) {
     }
 
     // Update UI Buttons
+    navModeBtn.textContent = `Navigation: ${activeTool === 'nav' ? 'ON' : 'OFF'}`;
+    navModeBtn.classList.toggle('active', activeTool === 'nav');
+
     wallModeBtn.textContent = `Wall Mode: ${activeTool === 'wall' ? 'ON' : 'OFF'}`;
     wallModeBtn.classList.toggle('active', activeTool === 'wall');
     
@@ -281,17 +286,18 @@ function setActiveTool(tool: EditorTool) {
     deleteModeBtn.classList.toggle('active', activeTool === 'delete');
 
     // Cursor visibility
-    cursor.visible = activeTool !== null && activeTool !== 'delete';
+    cursor.visible = activeTool !== null && activeTool !== 'delete' && activeTool !== 'nav';
     
-    // Controls - disable when any tool is active
-    sceneManager.setControlsEnabled(activeTool === null);
+    // Controls - enable ONLY when nav tool is active
+    sceneManager.setControlsEnabled(activeTool === 'nav');
 
-    if (activeTool === null) {
+    if (activeTool === 'nav' || activeTool === null) {
         checkGridExpansion();
     }
 }
 
 // UI Event Listeners
+navModeBtn.addEventListener('click', () => setActiveTool('nav'));
 wallModeBtn.addEventListener('click', () => setActiveTool('wall'));
 roomModeBtn.addEventListener('click', () => setActiveTool('room'));
 doorModeBtn.addEventListener('click', () => setActiveTool('door'));
@@ -517,7 +523,7 @@ container.addEventListener('mousemove', (event) => {
 
     if (activeTool !== 'wall') {
         // Fallback for when no tool is active - double check cursor visibility
-        cursor.visible = activeTool !== null && activeTool !== 'delete';
+        cursor.visible = activeTool !== null && activeTool !== 'delete' && activeTool !== 'nav';
         return;
     }
 
@@ -700,4 +706,5 @@ function updatePreviewDoor(mousePoint: THREE.Vector3) {
 
 // Initial state
 loadFromLocalStorage();
+setActiveTool('nav');
 updateJSONOverlay();

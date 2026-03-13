@@ -112,42 +112,59 @@ describe('Mega-Walls UI', () => {
   });
 
   it('should initialize the app and handle mode toggles', async () => {
+    const navModeBtn = document.getElementById('nav-mode') as HTMLButtonElement;
     const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
     const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
     const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
     const floorSubTools = document.getElementById('floor-sub-tools')!;
     
+    expect(navModeBtn).toBeTruthy();
     expect(wallModeBtn).toBeTruthy();
     expect(deleteModeBtn).toBeTruthy();
     expect(floorModeBtn).toBeTruthy();
 
-    // Initial state check
+    // Initial state check - Navigation should be ON
+    expect(navModeBtn.textContent).toContain('ON');
+    expect(navModeBtn.classList.contains('active')).toBe(true);
     expect(wallModeBtn.textContent).toContain('OFF');
     expect(deleteModeBtn.textContent).toContain('OFF');
 
-    // Toggle Wall Mode ON
+    // Toggle Wall Mode ON (should turn OFF navigation)
     wallModeBtn.click();
     expect(wallModeBtn.textContent).toContain('ON');
     expect(wallModeBtn.classList.contains('active')).toBe(true);
+    expect(navModeBtn.textContent).toContain('OFF');
+    expect(navModeBtn.classList.contains('active')).toBe(false);
 
     // Toggle Delete Mode ON (should turn OFF wall mode)
     deleteModeBtn.click();
     expect(deleteModeBtn.textContent).toContain('ON');
     expect(wallModeBtn.textContent).toContain('OFF');
+    expect(navModeBtn.textContent).toContain('OFF');
+
+    // Turning Delete Mode OFF should return to Navigation mode
+    deleteModeBtn.click();
+    expect(deleteModeBtn.textContent).toContain('OFF');
+    expect(navModeBtn.textContent).toContain('ON');
+    expect(navModeBtn.classList.contains('active')).toBe(true);
 
     // Test Floor Mode
     floorModeBtn.click();
     expect(floorModeBtn.textContent).toContain('ON');
+    expect(navModeBtn.textContent).toContain('OFF');
     expect(floorSubTools.classList.contains('hidden')).toBe(false);
 
-    // Switching back to Wall Mode should hide floor tools
-    wallModeBtn.click();
+    // Switching to Navigation Mode should hide floor tools
+    navModeBtn.click();
+    expect(navModeBtn.textContent).toContain('ON');
+    expect(floorModeBtn.textContent).toContain('OFF');
     expect(floorSubTools.classList.contains('hidden')).toBe(true);
   });
 
   it('should manage cursor visibility correctly for all tools', async () => {
     const { cursor } = mainModule;
     
+    const navModeBtn = document.getElementById('nav-mode') as HTMLButtonElement;
     const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
     const roomModeBtn = document.getElementById('room-mode-btn') as HTMLButtonElement;
     const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
@@ -161,13 +178,18 @@ describe('Mega-Walls UI', () => {
         container?.dispatchEvent(event);
     };
 
-    // Initially cursor hidden
+    // Initially cursor hidden (Navigation mode)
     expect(cursor.visible).toBe(false);
 
     // Wall Mode: Cursor visible
     wallModeBtn.click();
     moveMouse();
     expect(cursor.visible).toBe(true);
+
+    // Navigation Mode: Cursor HIDDEN
+    navModeBtn.click();
+    moveMouse();
+    expect(cursor.visible).toBe(false);
 
     // Delete Tool: Cursor HIDDEN
     deleteModeBtn.click();
