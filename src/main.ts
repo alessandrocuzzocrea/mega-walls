@@ -4,6 +4,7 @@ import { SceneManager } from './engine/SceneManager'
 import { Grid } from './components/Grid'
 import { Floor } from './components/Floor'
 import { WallManager } from './components/WallManager'
+import { DoorManager } from './components/DoorManager'
 import { FloorManager } from './components/FloorManager'
 import { InputManager } from './engine/InputManager'
 
@@ -13,6 +14,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="glass-panel">
       <h1>Mega-Walls Editor</h1>
       <button id="add-wall-mode" class="primary-btn">Wall Mode: OFF</button>
+      <button id="door-mode-btn" class="door-btn">Door Tool: OFF</button>
       <div class="tool-group">
         <button id="floor-mode" class="primary-btn">Floor Tool: OFF</button>
         <div id="floor-sub-tools" class="sub-tools hidden">
@@ -41,16 +43,19 @@ const sceneManager = new SceneManager(container);
 const grid = new Grid(sceneManager.getScene());
 const floor = new Floor(sceneManager.getScene());
 const wallManager = new WallManager(sceneManager.getScene());
+const doorManager = new DoorManager(sceneManager.getScene());
 const floorManager = new FloorManager(sceneManager.getScene());
 const inputManager = new InputManager(sceneManager.getCamera());
 
 // Interaction State
 let isWallMode = false;
+let isDoorMode = false;
 let isDeleteMode = false;
 let isFloorMode = false;
 let floorSubMode: 'rect' | 'fill' = 'rect';
 
 let wallStartPoint: THREE.Vector3 | null = null;
+let doorStartPoint: THREE.Vector3 | null = null;
 let floorStartPoint: THREE.Vector3 | null = null;
 let hoveredObject: THREE.Object3D | null = null;
 let isWireframe = false;
@@ -88,10 +93,41 @@ const cursor = new THREE.Mesh(
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })
 );
 cursor.visible = false;
+cursor.visible = false;
 sceneManager.getScene().add(cursor);
+
+// Door Preview
+const previewDoor = new THREE.Group();
+const pFrameMat = new THREE.MeshStandardMaterial({ color: 0x4d2a15, transparent: true, opacity: 0.5 });
+const pSlabMat = new THREE.MeshStandardMaterial({ color: 0x8b4513, transparent: true, opacity: 0.5 });
+const pHandleMat = new THREE.MeshStandardMaterial({ color: 0xffd700, transparent: true, opacity: 0.5 });
+
+const pfGeo = new THREE.BoxGeometry(0.1, 2.5, 0.22);
+const plf = new THREE.Mesh(pfGeo, pFrameMat);
+plf.position.set(-0.45, 1.25, 0);
+previewDoor.add(plf);
+const prf = plf.clone();
+prf.position.set(0.45, 1.25, 0);
+previewDoor.add(prf);
+const ptfGeo = new THREE.BoxGeometry(1, 0.1, 0.22);
+const ptf = new THREE.Mesh(ptfGeo, pFrameMat);
+ptf.position.set(0, 2.45, 0);
+previewDoor.add(ptf);
+const psGeo = new THREE.BoxGeometry(0.8, 2.4, 0.15);
+const ps = new THREE.Mesh(psGeo, pSlabMat);
+ps.position.set(0, 1.2, 0);
+previewDoor.add(ps);
+const phGeo = new THREE.SphereGeometry(0.04, 8, 8);
+const ph = new THREE.Mesh(phGeo, pHandleMat);
+ph.position.set(0.3, 1.2, 0.1);
+previewDoor.add(ph);
+
+previewDoor.visible = false;
+sceneManager.getScene().add(previewDoor);
 
 // UI Elements
 const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
+const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
 const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
 const floorSubTools = document.getElementById('floor-sub-tools')!;
 const floorRectBtn = document.getElementById('floor-rect') as HTMLButtonElement;
@@ -109,6 +145,7 @@ function updateJSONOverlay() {
     if (!jsonContent) return;
     const data = {
         walls: wallManager.getData(),
+        doors: doorManager.getData(),
         ...floorManager.getData()
     };
     const jsonString = JSON.stringify(data, null, 2);
@@ -123,6 +160,9 @@ function loadFromLocalStorage() {
             const data = JSON.parse(saved);
             if (data.walls && Array.isArray(data.walls)) {
                 wallManager.resetAndLoad(data.walls);
+            }
+            if (data.doors && Array.isArray(data.doors)) {
+                doorManager.resetAndLoad(data.doors);
             }
             if (data.floors || data.tiles) {
                 floorManager.resetAndLoad(
@@ -176,6 +216,9 @@ wallModeBtn.addEventListener('click', () => {
     wallModeBtn.classList.toggle('active', isWallMode);
     
     if (isWallMode) {
+        isDoorMode = false;
+        doorModeBtn.textContent = 'Door Tool: OFF';
+        doorModeBtn.classList.remove('active');
         isFloorMode = false;
         floorModeBtn.textContent = 'Floor Tool: OFF';
         floorModeBtn.classList.remove('active');
@@ -183,11 +226,35 @@ wallModeBtn.addEventListener('click', () => {
     }
 
     cursor.visible = isWallMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
     if (!isWallMode) {
         wallStartPoint = null;
         previewWall.visible = false;
         checkGridExpansion(); // Final check to contract if needed
+    }
+});
+
+doorModeBtn.addEventListener('click', () => {
+    isDoorMode = !isDoorMode;
+    if (isDoorMode) {
+        isWallMode = false;
+        wallModeBtn.classList.remove('active');
+        wallModeBtn.textContent = 'Wall Mode: OFF';
+        isFloorMode = false;
+        floorModeBtn.classList.remove('active');
+        floorModeBtn.textContent = 'Floor Tool: OFF';
+        floorSubTools.classList.add('hidden');
+        isDeleteMode = false;
+        deleteModeBtn.classList.remove('active');
+        deleteModeBtn.textContent = 'Delete Tool: OFF';
+    }
+    doorModeBtn.textContent = `Door Tool: ${isDoorMode ? 'ON' : 'OFF'}`;
+    doorModeBtn.classList.toggle('active', isDoorMode);
+    cursor.visible = isDoorMode;
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
+    if (!isDoorMode) {
+        doorStartPoint = null;
+        previewDoor.visible = false;
     }
 });
 
@@ -207,7 +274,7 @@ floorModeBtn.addEventListener('click', () => {
     floorModeBtn.textContent = `Floor Tool: ${isFloorMode ? 'ON' : 'OFF'}`;
     floorModeBtn.classList.toggle('active', isFloorMode);
     cursor.visible = isFloorMode;
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isFloorMode && !isDoorMode);
     if (!isFloorMode) {
         floorStartPoint = null;
         previewFloor.visible = false;
@@ -242,7 +309,7 @@ deleteModeBtn.addEventListener('click', () => {
     }
     deleteModeBtn.textContent = `Delete Tool: ${isDeleteMode ? 'ON' : 'OFF'}`;
     deleteModeBtn.classList.toggle('active', isDeleteMode);
-    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode);
+    sceneManager.setControlsEnabled(!isWallMode && !isDeleteMode && !isDoorMode && !isFloorMode);
     
     if (!isDeleteMode && hoveredObject) {
         if (hoveredObject.name === 'wall') {
@@ -268,6 +335,7 @@ wireframeBtn.addEventListener('click', () => {
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {
     wallManager.clearWalls();
+    doorManager.clearDoors();
     floorManager.clearFloors();
     checkGridExpansion();
     updateJSONOverlay();
@@ -276,11 +344,16 @@ document.getElementById('clear-walls')?.addEventListener('click', () => {
 // Mouse Interactions
 container.addEventListener('mousedown', (event) => {
     if (isDeleteMode) {
-        const targets = [...wallManager.getWalls(), ...floorManager.getFloors()];
+        const targets = [...wallManager.getWalls(), ...doorManager.getDoors(), ...floorManager.getFloors()];
         const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
             if (intersect.object.name === 'wall') {
                 wallManager.removeWall(intersect.object);
+            } else if (intersect.object.name === 'door' || intersect.object.parent?.name === 'door') {
+                // Find the door group
+                let doorObj = intersect.object;
+                while (doorObj.parent && doorObj.name !== 'door') doorObj = doorObj.parent;
+                doorManager.removeDoor(doorObj);
             } else {
                 floorManager.removeFloor(intersect.object);
             }
@@ -318,6 +391,33 @@ container.addEventListener('mousedown', (event) => {
         return;
     }
 
+    if (isDoorMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            if (!doorStartPoint) {
+                doorStartPoint = snappedPoint;
+            } else {
+                const dx = Math.abs(snappedPoint.x - doorStartPoint.x);
+                const dz = Math.abs(snappedPoint.z - doorStartPoint.z);
+                
+                if ((dx === 1 && dz === 0) || (dx === 0 && dz === 1)) {
+                    const direction = dx === 1 ? 'horizontal' : 'vertical';
+                    const doorPos = doorStartPoint.clone().add(snappedPoint).multiplyScalar(0.5);
+                    
+                    // Split walls at this location
+                    wallManager.splitWallAt(doorStartPoint, snappedPoint);
+                    
+                    doorManager.addDoor(doorPos, direction);
+                    updateJSONOverlay();
+                }
+                doorStartPoint = null;
+                previewDoor.visible = false;
+            }
+        }
+        return;
+    }
+
     if (!isWallMode) return;
     
     const point = inputManager.getMousePosition(event);
@@ -341,7 +441,7 @@ container.addEventListener('mousedown', (event) => {
 
 container.addEventListener('mousemove', (event) => {
     if (isDeleteMode) {
-        const targets = [...wallManager.getWalls(), ...floorManager.getFloors()];
+        const targets = [...wallManager.getWalls(), ...doorManager.getDoors(), ...floorManager.getFloors()];
         const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
             if (hoveredObject !== intersect.object) {
@@ -376,6 +476,25 @@ container.addEventListener('mousemove', (event) => {
                 previewFloor.visible = true;
             } else {
                 previewFloor.visible = false;
+            }
+            checkGridExpansion(snappedPoint);
+        } else {
+            cursor.visible = false;
+        }
+        return;
+    }
+
+    if (isDoorMode) {
+        const point = inputManager.getMousePosition(event);
+        if (point) {
+            const snappedPoint = inputManager.snapToGrid(point);
+            cursor.position.copy(snappedPoint);
+            cursor.visible = true;
+
+            if (doorStartPoint) {
+                updatePreviewDoor(doorStartPoint, snappedPoint);
+            } else {
+                previewDoor.visible = false;
             }
             checkGridExpansion(snappedPoint);
         } else {
@@ -438,6 +557,20 @@ function updatePreviewFloor(start: THREE.Vector3, end: THREE.Vector3) {
         0.01,
         (start.z + end.z) / 2
     );
+}
+
+function updatePreviewDoor(start: THREE.Vector3, end: THREE.Vector3) {
+    const dx = Math.abs(end.x - start.x);
+    const dz = Math.abs(end.z - start.z);
+    
+    if ((dx === 1 && dz === 0) || (dx === 0 && dz === 1)) {
+        const direction = dx === 1 ? 'horizontal' : 'vertical';
+        previewDoor.position.copy(start.clone().add(end).multiplyScalar(0.5));
+        previewDoor.rotation.y = direction === 'vertical' ? Math.PI / 2 : 0;
+        previewDoor.visible = true;
+    } else {
+        previewDoor.visible = false;
+    }
 }
 
 // Initial state

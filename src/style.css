@@ -153,6 +153,32 @@ input[type="range"] {
   box-shadow: 0 0 15px rgba(255, 74, 74, 0.5);
 }
 
+.door-btn {
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+}
+
+.door-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+  filter: brightness(1.1);
+}
+
+.door-btn.active {
+  background: #f59e0b;
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
+  transform: translateY(1px);
+}
+
 .tool-group {
   display: flex;
   flex-direction: column;

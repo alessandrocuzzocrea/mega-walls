@@ -192,4 +192,81 @@ export class WallManager {
             this.walls.remove(wall);
         }
     }
+
+    public splitWallAt(p1: { x: number, z: number }, p2: { x: number, z: number }) {
+        let i = 0;
+        const sMinX = Math.min(p1.x, p2.x);
+        const sMaxX = Math.max(p1.x, p2.x);
+        const sMinZ = Math.min(p1.z, p2.z);
+        const sMaxZ = Math.max(p1.z, p2.z);
+
+        while (i < this.wallDataList.length) {
+            const wall = this.wallDataList[i];
+            
+            const dxW = wall.end.x - wall.start.x;
+            const dzW = wall.end.z - wall.start.z;
+            const dxS = p2.x - p1.x;
+            const dzS = p2.z - p1.z;
+            
+            // Collinear check
+            const crossProduct = dxW * dzS - dzW * dxS;
+            if (Math.abs(crossProduct) > 0.0001) {
+                i++;
+                continue;
+            }
+
+            // Same line check
+            const dxWS = p1.x - wall.start.x;
+            const dzWS = p1.z - wall.start.z;
+            const crossProduct2 = dxW * dzWS - dzW * dxWS;
+            if (Math.abs(crossProduct2) > 0.0001) {
+                i++;
+                continue;
+            }
+
+            const wMinX = Math.min(wall.start.x, wall.end.x);
+            const wMaxX = Math.max(wall.start.x, wall.end.x);
+            const wMinZ = Math.min(wall.start.z, wall.end.z);
+            const wMaxZ = Math.max(wall.start.z, wall.end.z);
+
+            const isHorizontal = Math.abs(dzW) < 0.0001;
+            const isVertical = Math.abs(dxW) < 0.0001;
+            
+            let overlaps = false;
+            if (isHorizontal) {
+                overlaps = sMinX < wMaxX - 0.0001 && sMaxX > wMinX + 0.0001;
+            } else if (isVertical) {
+                overlaps = sMinZ < wMaxZ - 0.0001 && sMaxZ > wMinZ + 0.0001;
+            } else {
+                overlaps = (sMinX < wMaxX - 0.0001 && sMaxX > wMinX + 0.0001) && 
+                           (sMinZ < wMaxZ - 0.0001 && sMaxZ > wMinZ + 0.0001);
+            }
+
+            if (overlaps) {
+                // Store the original wall data before removing
+                const originalWall = { ...wall };
+                this.removeWallAtIndex(i);
+                
+                if (isHorizontal) {
+                    if (sMinX > wMinX + 0.0001) {
+                        this.addWall(new THREE.Vector3(wMinX, 0, originalWall.start.z), new THREE.Vector3(sMinX, 0, originalWall.start.z));
+                    }
+                    if (sMaxX < wMaxX - 0.0001) {
+                        this.addWall(new THREE.Vector3(sMaxX, 0, originalWall.start.z), new THREE.Vector3(wMaxX, 0, originalWall.start.z));
+                    }
+                } else if (isVertical) {
+                    if (sMinZ > wMinZ + 0.0001) {
+                        this.addWall(new THREE.Vector3(originalWall.start.x, 0, wMinZ), new THREE.Vector3(originalWall.start.x, 0, sMinZ));
+                    }
+                    if (sMaxZ < wMaxZ - 0.0001) {
+                        this.addWall(new THREE.Vector3(originalWall.start.x, 0, sMaxZ), new THREE.Vector3(originalWall.start.x, 0, wMaxZ));
+                    }
+                }
+                
+                i = 0; // Restart to handle potential merges or multiple overlaps
+                continue;
+            }
+            i++;
+        }
+    }
 }
