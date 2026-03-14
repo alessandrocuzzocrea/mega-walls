@@ -36,8 +36,8 @@ body {
 
 #ui-overlay {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 12px;
+  left: 12px;
   pointer-events: none;
   z-index: 100;
 }
@@ -48,18 +48,18 @@ body {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 24px;
+  border-radius: 12px;
+  padding: 12px;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  width: 300px;
+  width: 220px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 8px;
 }
 
 h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   background: linear-gradient(135deg, #fff 0%, #aaa 100%);
   -webkit-background-clip: text;
@@ -69,11 +69,11 @@ h1 {
 .control-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 label {
-  font-size: 0.85rem;
+  font-size: 0.7rem;
   color: #888;
   font-weight: 500;
   text-transform: uppercase;
@@ -86,10 +86,10 @@ input[type="range"] {
 }
 
 .primary-btn, .secondary-btn {
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid transparent;
-  padding: 10px 16px;
-  font-size: 1rem;
+  padding: 6px 10px;
+  font-size: 0.8rem;
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
@@ -103,7 +103,7 @@ input[type="range"] {
 
 .primary-btn:hover {
   background-color: #535bf2;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(100, 108, 255, 0.3);
 }
 
@@ -119,21 +119,21 @@ input[type="range"] {
 }
 
 .instructions {
-  margin-top: 10px;
-  font-size: 0.8rem;
+  margin-top: 4px;
+  font-size: 0.7rem;
   color: #888;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  padding-top: 15px;
+  padding-top: 8px;
 }
 
 .instructions p {
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .primary-btn.active {
   background-color: #4a54ff;
   border-color: #fff;
-  box-shadow: 0 0 15px rgba(100, 108, 255, 0.5);
+  box-shadow: 0 0 10px rgba(100, 108, 255, 0.5);
 }
 
 .danger-btn {
@@ -150,73 +150,78 @@ input[type="range"] {
   background-color: #ff4a4a;
   color: white;
   border-color: #fff;
-  box-shadow: 0 0 15px rgba(255, 74, 74, 0.5);
+  box-shadow: 0 0 10px rgba(255, 74, 74, 0.5);
 }
 
 .door-btn {
   background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
   color: white;
   border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.25s ease;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .door-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(251, 191, 36, 0.3);
   filter: brightness(1.1);
 }
 
 .door-btn.active {
   background: #f59e0b;
-  box-shadow: 0 0 15px rgba(251, 191, 36, 0.5);
-  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
 }
 
 .room-btn {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   color: white;
   border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.25s ease;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
 }
 
 .room-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
 }
 
 .room-btn.active {
   background: #059669;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
-  transform: translateY(1px);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
 }
 
-.tool-group {
+.tool-group, .history-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+}
+
+.history-group {
+  flex-direction: row;
+}
+
+.history-group button {
+  flex: 1;
 }
 
 .sub-tools {
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  gap: 4px;
+  padding: 4px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.3s ease;
 }
@@ -227,8 +232,8 @@ input[type="range"] {
 
 .mini-btn {
   flex: 1;
-  padding: 6px;
-  font-size: 0.8rem;
+  padding: 4px;
+  font-size: 0.7rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
@@ -252,23 +257,46 @@ input[type="range"] {
 
 #json-overlay {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 12px;
+  right: 12px;
   pointer-events: auto;
   max-height: 80vh;
-  width: 350px;
+  width: 220px;
+  transition: all 0.3s ease;
+}
+
+#json-overlay.collapsed #json-content {
+  display: none;
+}
+
+#json-overlay label {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+#json-overlay label::after {
+  content: '▼';
+  font-size: 0.6rem;
+  transition: transform 0.3s ease;
+}
+
+#json-overlay.collapsed label::after {
+  content: '▶';
 }
 
 #json-content {
   margin: 0;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: #646cff;
   background: rgba(0, 0, 0, 0.2);
-  padding: 12px;
-  border-radius: 8px;
+  padding: 8px;
+  border-radius: 6px;
   overflow-y: auto;
-  max-height: 60vh;
+  max-height: 50vh;
   white-space: pre-wrap;
   word-break: break-all;
 }

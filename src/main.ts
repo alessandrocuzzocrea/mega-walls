@@ -33,6 +33,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <button id="delete-mode" class="danger-btn">Delete Tool: OFF</button>
       <button id="toggle-wireframe" class="secondary-btn">Wireframe: OFF</button>
       <button id="clear-walls" class="secondary-btn">Clear All</button>
+      <div class="history-group">
+        <button id="undo-btn" class="secondary-btn" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="redo-btn" class="secondary-btn" title="Redo (Ctrl+Y)">Redo</button>
+      </div>
       <div class="instructions">
         <p>• Scroll to Zoom</p>
         <p>• Left Click to Draw/Delete</p>
@@ -40,8 +44,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       </div>
     </div>
   </div>
-  <div id="json-overlay" class="glass-panel">
-    <label>Serialized Data (JSON)</label>
+  <div id="json-overlay" class="glass-panel collapsed">
+    <label id="json-header">Serialized Data (JSON)</label>
     <pre id="json-content">{}</pre>
   </div>
 `
@@ -179,6 +183,8 @@ const floorRectBtn = document.getElementById('floor-rect') as HTMLButtonElement;
 const floorFillBtn = document.getElementById('floor-fill') as HTMLButtonElement;
 const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
 const wireframeBtn = document.getElementById('toggle-wireframe') as HTMLButtonElement;
+const undoBtn = document.getElementById('undo-btn') as HTMLButtonElement;
+const redoBtn = document.getElementById('redo-btn') as HTMLButtonElement;
 const jsonContent = document.getElementById('json-content')!;
 
 // Navigation & Setup State
@@ -308,6 +314,15 @@ roomModeBtn.addEventListener('click', () => setActiveTool('room'));
 doorModeBtn.addEventListener('click', () => setActiveTool('door'));
 floorModeBtn.addEventListener('click', () => setActiveTool('floor'));
 deleteModeBtn.addEventListener('click', () => setActiveTool('delete'));
+
+undoBtn.addEventListener('click', () => commandManager.undo());
+redoBtn.addEventListener('click', () => commandManager.redo());
+
+const jsonOverlay = document.getElementById('json-overlay')!;
+const jsonHeader = document.getElementById('json-header')!;
+jsonHeader.addEventListener('click', () => {
+    jsonOverlay.classList.toggle('collapsed');
+});
 
 floorRectBtn.addEventListener('click', () => {
     floorSubMode = 'rect';
