@@ -19,6 +19,10 @@ export class AddWallCommand implements ICommand {
         this.wallObject = this.wallManager.addWall(this.start, this.end);
     }
 
+    toString() {
+        return `${this.name} (${this.start.x},${this.start.z}) to (${this.end.x},${this.end.z})`;
+    }
+
     undo() {
         if (this.wallObject) {
             this.wallManager.removeWall(this.wallObject);
@@ -42,6 +46,10 @@ export class RemoveWallCommand implements ICommand {
 
     execute() {
         this.wallManager.removeWall(this.wall);
+    }
+
+    toString() {
+        return `${this.name} at (${this.wallData?.start.x},${this.wallData?.start.z})`;
     }
 
     undo() {

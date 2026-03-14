@@ -19,6 +19,10 @@ export class AddDoorCommand implements ICommand {
         this.doorObject = this.doorManager.addDoor(this.position, this.angle);
     }
 
+    toString() {
+        return `${this.name} at (${this.position.x},${this.position.z}) angle: ${(this.angle * 180 / Math.PI).toFixed(1)}°`;
+    }
+
     undo() {
         if (this.doorObject) {
             this.doorManager.removeDoor(this.doorObject);
@@ -42,6 +46,10 @@ export class RemoveDoorCommand implements ICommand {
 
     execute() {
         this.doorManager.removeDoor(this.door);
+    }
+
+    toString() {
+        return `${this.name} at (${this.doorData?.position.x},${this.doorData?.position.z})`;
     }
 
     undo() {

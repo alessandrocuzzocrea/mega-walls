@@ -23,6 +23,10 @@ export class AddFloorCommand implements ICommand {
         this.floorObject = this.floorManager.addFloor(this.x, this.z, this.w, this.d);
     }
 
+    toString() {
+        return `${this.name} (${this.x},${this.z}) size: ${this.w}x${this.d}`;
+    }
+
     undo() {
         if (this.floorObject) {
             this.floorManager.removeFloor(this.floorObject);
@@ -46,6 +50,10 @@ export class RemoveFloorCommand implements ICommand {
 
     execute() {
         this.floorManager.removeFloor(this.floor);
+    }
+
+    toString() {
+        return `${this.name} at (${this.floorData?.x},${this.floorData?.z}) size: ${this.floorData?.width}x${this.floorData?.depth}`;
     }
 
     undo() {
@@ -79,6 +87,10 @@ export class FloodFillCommand implements ICommand {
 
     execute() {
         this.floorManager.floodFill(this.point, this.walls);
+    }
+
+    toString() {
+        return `${this.name} at (${this.point.x.toFixed(1)},${this.point.z.toFixed(1)})`;
     }
 
     undo() {

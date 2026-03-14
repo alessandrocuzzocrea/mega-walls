@@ -15,6 +15,10 @@ export class CompositeCommand implements ICommand {
         }
     }
 
+    toString() {
+        return `${this.name} (${this.commands.length} actions)`;
+    }
+
     undo() {
         // Undo in reverse order
         for (let i = this.commands.length - 1; i >= 0; i--) {

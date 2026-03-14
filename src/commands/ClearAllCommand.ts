@@ -27,6 +27,10 @@ export class ClearAllCommand implements ICommand {
         this.floorManager.clearFloors();
     }
 
+    toString() {
+        return this.name;
+    }
+
     undo() {
         this.wallManager.resetAndLoad(this.walls);
         this.doorManager.resetAndLoad(this.doors);

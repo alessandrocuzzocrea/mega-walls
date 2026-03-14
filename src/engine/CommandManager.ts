@@ -10,7 +10,7 @@ export class CommandManager {
     }
 
     execute(command: ICommand) {
-        console.log(`Executing command: ${command.name}`);
+        console.log(`Executing: ${command.toString()}`);
         command.execute();
         this.undoStack.push(command);
         this.redoStack = []; // Clear redo stack on new command
@@ -20,7 +20,7 @@ export class CommandManager {
     undo() {
         const command = this.undoStack.pop();
         if (command) {
-            console.log(`Undoing command: ${command.name}`);
+            console.log(`Undoing: ${command.toString()}`);
             command.undo();
             this.redoStack.push(command);
             this.notify();
@@ -30,7 +30,7 @@ export class CommandManager {
     redo() {
         const command = this.redoStack.pop();
         if (command) {
-            console.log(`Redoing command: ${command.name}`);
+            console.log(`Redoing: ${command.toString()}`);
             command.execute();
             this.undoStack.push(command);
             this.notify();
