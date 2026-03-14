@@ -19,7 +19,7 @@ export class WallManager {
         this.scene.add(this.walls);
     }
 
-    public addWall(start: THREE.Vector3, end: THREE.Vector3) {
+    public addWall(start: THREE.Vector3, end: THREE.Vector3): THREE.Object3D {
         let mergedStart = { x: start.x, z: start.z };
         let mergedEnd = { x: end.x, z: end.z };
         let merged = true;
@@ -96,6 +96,7 @@ export class WallManager {
         wall.rotation.y = -angle;
 
         this.walls.add(wall);
+        return wall;
     }
 
     private pointsEqual(p1: { x: number, z: number }, p2: { x: number, z: number }): boolean {
@@ -198,7 +199,6 @@ export class WallManager {
         const splitStart = new THREE.Vector3(p1.x, 0, p1.z);
         const splitEnd = new THREE.Vector3(p2.x, 0, p2.z);
         const splitDir = splitEnd.clone().sub(splitStart);
-        const splitLen = splitDir.length();
         const splitDirNorm = splitDir.clone().normalize();
 
         while (i < this.wallDataList.length) {
@@ -236,7 +236,6 @@ export class WallManager {
 
             if (overlapMax - overlapMin > 0.001) {
                 // Overlap exists!
-                const originalWall = { ...wall };
                 this.removeWallAtIndex(i);
 
                 // Add remaining segments

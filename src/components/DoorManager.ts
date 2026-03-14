@@ -20,7 +20,7 @@ export class DoorManager {
         this.scene.add(this.doors);
     }
 
-    public addDoor(position: THREE.Vector3, angle: number) {
+    public addDoor(position: THREE.Vector3, angle: number): THREE.Object3D {
         const index = this.doorDataList.length;
         this.doorDataList.push({
             position: { x: position.x, z: position.z },
@@ -37,6 +37,7 @@ export class DoorManager {
         doorModel.rotation.y = angle;
 
         this.doors.add(doorModel);
+        return doorModel;
     }
 
     private createDoorModel(): THREE.Group {

@@ -7,6 +7,12 @@ import { WallManager } from './components/WallManager'
 import { DoorManager } from './components/DoorManager'
 import { FloorManager } from './components/FloorManager'
 import { InputManager } from './engine/InputManager'
+import { CommandManager } from './engine/CommandManager'
+import { AddWallCommand, RemoveWallCommand } from './commands/WallCommands'
+import { AddDoorCommand, RemoveDoorCommand } from './commands/DoorCommands'
+import { AddFloorCommand, RemoveFloorCommand, FloodFillCommand } from './commands/FloorCommands'
+import { CompositeCommand } from './commands/CompositeCommand'
+import { ClearAllCommand } from './commands/ClearAllCommand'
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="canvas-container"></div>
@@ -48,13 +54,16 @@ const wallManager = new WallManager(sceneManager.getScene());
 const doorManager = new DoorManager(sceneManager.getScene());
 const floorManager = new FloorManager(sceneManager.getScene());
 const inputManager = new InputManager(sceneManager.getCamera());
+const commandManager = new CommandManager(() => {
+    updateJSONOverlay();
+    checkGridExpansion();
+});
 
 // Interaction State
 type EditorTool = 'nav' | 'wall' | 'room' | 'door' | 'floor' | 'delete' | null;
 export let activeTool: EditorTool = 'nav';
 
 let wallStartPoint: THREE.Vector3 | null = null;
-let doorStartPoint: THREE.Vector3 | null = null;
 let floorStartPoint: THREE.Vector3 | null = null;
 let roomStartPoint: THREE.Vector3 | null = null;
 let hoveredObject: THREE.Object3D | null = null;
@@ -200,11 +209,8 @@ function loadFromLocalStorage() {
             if (data.doors && Array.isArray(data.doors)) {
                 doorManager.resetAndLoad(data.doors);
             }
-            if (data.floors || data.tiles) {
-                floorManager.resetAndLoad(
-                    Array.isArray(data.floors) ? data.floors : [],
-                    Array.isArray(data.tiles) ? data.tiles : []
-                );
+            if (Array.isArray(data.floors)) {
+                floorManager.resetAndLoad(data.floors);
             }
             checkGridExpansion();
         } catch (e) {
@@ -250,7 +256,6 @@ function setActiveTool(tool: EditorTool) {
 
     // Reset all temporary states
     wallStartPoint = null;
-    doorStartPoint = null;
     floorStartPoint = null;
     roomStartPoint = null;
     previewWall.visible = false;
@@ -331,11 +336,7 @@ wireframeBtn.addEventListener('click', () => {
 });
 
 document.getElementById('clear-walls')?.addEventListener('click', () => {
-    wallManager.clearWalls();
-    doorManager.clearDoors();
-    floorManager.clearFloors();
-    checkGridExpansion();
-    updateJSONOverlay();
+    commandManager.execute(new ClearAllCommand(wallManager, doorManager, floorManager));
 });
 
 // Mouse Interactions
@@ -345,17 +346,15 @@ container.addEventListener('mousedown', (event) => {
         const intersect = inputManager.getObjectAtMouse(event, targets);
         if (intersect) {
             if (intersect.object.name === 'wall') {
-                wallManager.removeWall(intersect.object);
+                commandManager.execute(new RemoveWallCommand(wallManager, intersect.object));
             } else if (intersect.object.name === 'door' || intersect.object.parent?.name === 'door') {
                 // Find the door group
                 let doorObj = intersect.object;
                 while (doorObj.parent && doorObj.name !== 'door') doorObj = doorObj.parent;
-                doorManager.removeDoor(doorObj);
+                commandManager.execute(new RemoveDoorCommand(doorManager, doorObj));
             } else {
-                floorManager.removeFloor(intersect.object);
+                commandManager.execute(new RemoveFloorCommand(floorManager, intersect.object));
             }
-            checkGridExpansion();
-            updateJSONOverlay();
             hoveredObject = null;
         }
         return;
@@ -378,8 +377,7 @@ container.addEventListener('mousedown', (event) => {
         if (point) {
             const snappedPoint = inputManager.snapToGrid(point);
             if (floorSubMode === 'fill') {
-                const success = floorManager.floodFill(snappedPoint, wallManager.getData());
-                if (success) updateJSONOverlay();
+                commandManager.execute(new FloodFillCommand(floorManager, snappedPoint, wallManager.getData()));
             } else {
                 if (!floorStartPoint) {
                     floorStartPoint = snappedPoint;
@@ -389,8 +387,7 @@ container.addEventListener('mousedown', (event) => {
                     const w = Math.abs(snappedPoint.x - floorStartPoint.x);
                     const d = Math.abs(snappedPoint.z - floorStartPoint.z);
                     if (w > 0 && d > 0) {
-                        floorManager.addFloor(x, z, w, d);
-                        updateJSONOverlay();
+                        commandManager.execute(new AddFloorCommand(floorManager, x, z, w, d));
                     }
                     floorStartPoint = null;
                     previewFloor.visible = false;
@@ -407,14 +404,18 @@ container.addEventListener('mousedown', (event) => {
             if (previewDoor.visible) {
                 if (previewDoor.userData.placeData) {
                     const { p1, p2, doorPos, angle } = previewDoor.userData.placeData;
-                    // Split walls at this location
-                    wallManager.splitWallAt(p1, p2);
-                    doorManager.addDoor(doorPos, angle);
+                    // Split walls at this location (maybe this should be a command too?)
+                    // For now let's keep it simple or wrap it in a composite command
+                    const wallSplitCmd = {
+                        name: 'Split Wall',
+                        execute: () => wallManager.splitWallAt(p1, p2),
+                        undo: () => {} // Undoing a split is hard, maybe we don't need it if we undo the wall?
+                    };
+                    const addDoorCmd = new AddDoorCommand(doorManager, doorPos, angle);
+                    commandManager.execute(new CompositeCommand('Add Door to Wall', [wallSplitCmd as any, addDoorCmd]));
                 } else {
-                    // Place door freely on the grid
-                    doorManager.addDoor(previewDoor.position.clone(), previewDoor.rotation.y);
+                    commandManager.execute(new AddDoorCommand(doorManager, previewDoor.position.clone(), previewDoor.rotation.y));
                 }
-                updateJSONOverlay();
             }
         }
         return;
@@ -431,10 +432,8 @@ container.addEventListener('mousedown', (event) => {
             cursor.material.color.set(0x646cff);
             checkGridExpansion(snappedPoint);
         } else {
-            wallManager.addWall(wallStartPoint, snappedPoint);
+            commandManager.execute(new AddWallCommand(wallManager, wallStartPoint, snappedPoint));
             splitWallsAroundDoors();
-            checkGridExpansion(snappedPoint);
-            updateJSONOverlay();
             wallStartPoint = null;
             previewWall.visible = false;
             cursor.material.color.set(0xffffff);
@@ -525,7 +524,7 @@ container.addEventListener('mousemove', (event) => {
 
     if (activeTool !== 'wall') {
         // Fallback for when no tool is active - double check cursor visibility
-        cursor.visible = activeTool !== null && activeTool !== 'delete' && activeTool !== 'nav';
+        cursor.visible = activeTool !== null && activeTool !== 'nav';
         return;
     }
 
@@ -561,22 +560,27 @@ container.addEventListener('mouseup', (event) => {
             const depth = zMax - zMin;
 
             if (width > 0 && depth > 0) {
-                // Add 4 walls
                 const p1 = new THREE.Vector3(xMin, 0, zMin);
                 const p2 = new THREE.Vector3(xMax, 0, zMin);
                 const p3 = new THREE.Vector3(xMax, 0, zMax);
                 const p4 = new THREE.Vector3(xMin, 0, zMax);
 
-                wallManager.addWall(p1, p2);
-                wallManager.addWall(p2, p3);
-                wallManager.addWall(p3, p4);
-                wallManager.addWall(p4, p1);
-                splitWallsAroundDoors();
+                const wallCmds = [
+                    new AddWallCommand(wallManager, p1, p2),
+                    new AddWallCommand(wallManager, p2, p3),
+                    new AddWallCommand(wallManager, p3, p4),
+                    new AddWallCommand(wallManager, p4, p1)
+                ];
+                
+                const splitCmd = {
+                    name: 'Split Walls',
+                    execute: () => splitWallsAroundDoors(),
+                    undo: () => {}
+                };
 
-                // Add 1 floor
-                floorManager.addFloor(xMin, zMin, width, depth);
+                const floorCmd = new AddFloorCommand(floorManager, xMin, zMin, width, depth);
 
-                updateJSONOverlay();
+                commandManager.execute(new CompositeCommand('Add Room', [...wallCmds, splitCmd as any, floorCmd]));
             }
         }
         roomStartPoint = null;
@@ -740,6 +744,21 @@ function updatePreviewDoor(mousePoint: THREE.Vector3) {
         previewDoor.userData.placeData = null;
     }
 }
+
+// Keyboard Shortcuts
+window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z') {
+            if (e.shiftKey) {
+                commandManager.redo();
+            } else {
+                commandManager.undo();
+            }
+        } else if (e.key === 'y') {
+            commandManager.redo();
+        }
+    }
+});
 
 // Initial state
 loadFromLocalStorage();

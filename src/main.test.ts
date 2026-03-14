@@ -172,8 +172,6 @@ describe('Mega-Walls UI', () => {
     const navModeBtn = document.getElementById('nav-mode') as HTMLButtonElement;
     const wallModeBtn = document.getElementById('add-wall-mode') as HTMLButtonElement;
     const roomModeBtn = document.getElementById('room-mode-btn') as HTMLButtonElement;
-    const doorModeBtn = document.getElementById('door-mode-btn') as HTMLButtonElement;
-    const floorModeBtn = document.getElementById('floor-mode') as HTMLButtonElement;
     const deleteModeBtn = document.getElementById('delete-mode') as HTMLButtonElement;
 
     // Helper to simulate mouse move to trigger cursor logic

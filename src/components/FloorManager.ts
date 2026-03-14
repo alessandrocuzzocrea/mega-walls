@@ -26,7 +26,7 @@ export class FloorManager {
         this.scene.add(this.floors);
     }
 
-    public addFloor(x: number, z: number, width: number, depth: number) {
+    public addFloor(x: number, z: number, width: number, depth: number): THREE.Object3D | null {
         const newCells: { x: number, z: number }[] = [];
         for (let ix = x; ix < x + width; ix++) {
             for (let iz = z; iz < z + depth; iz++) {
@@ -38,15 +38,18 @@ export class FloorManager {
             }
         }
 
-        if (newCells.length === 0) return;
+        if (newCells.length === 0) return null;
 
         // Merge cells into rectangles
         const rectangles = this.mergeCellsIntoRectangles(newCells);
+        const createdMeshes: THREE.Object3D[] = [];
         rectangles.forEach(rect => {
             const data: FloorData = { ...rect };
             this.floorDataList.push(data);
-            this.createFloorMesh(data, this.floorDataList.length - 1);
+            createdMeshes.push(this.createFloorMesh(data, this.floorDataList.length - 1));
         });
+
+        return createdMeshes[0] ?? null;
     }
 
     public addTile(x: number, z: number) {
@@ -63,7 +66,7 @@ export class FloorManager {
         const remaining = new Set(cells.map(c => `${c.x},${c.z}`));
 
         while (remaining.size > 0) {
-            const firstKey = remaining.values().next().value;
+            const firstKey = remaining.values().next().value as string;
             const [startX, startZ] = firstKey.split(',').map(Number);
             
             let width = 1;
@@ -99,7 +102,7 @@ export class FloorManager {
         return result;
     }
 
-    private createFloorMesh(data: FloorData, index: number) {
+    private createFloorMesh(data: FloorData, index: number): THREE.Mesh {
         const geometry = new THREE.PlaneGeometry(data.width, data.depth);
         const material = new THREE.MeshStandardMaterial({
             color: 0x8B4513,
@@ -118,6 +121,7 @@ export class FloorManager {
         mesh.name = 'floor';
 
         this.floors.add(mesh);
+        return mesh;
     }
 
     public isAreaOccupied(x: number, z: number, width: number, depth: number): boolean {
@@ -129,7 +133,7 @@ export class FloorManager {
         return false;
     }
 
-    public floodFill(startPoint: THREE.Vector3, walls: WallData[]): boolean {
+    public floodFill(startPoint: THREE.Vector3, walls: WallData[]): { x: number, z: number }[] | null {
         // Simple grid-based flood fill to find enclosed area
         // We'll use a 1x1 unit grid for simplicity
         const startX = Math.floor(startPoint.x);
@@ -151,7 +155,7 @@ export class FloorManager {
 
             // If we hit boundaries, it's not enclosed
             if (current.x <= minX || current.x >= maxX || current.z <= minZ || current.z >= maxZ) {
-                return false; 
+                return null; 
             }
 
             const neighbors = [
@@ -174,18 +178,16 @@ export class FloorManager {
                 queue.push(neighbor);
 
                 // Safety break for massive areas
-                if (visited.size > 5000) return false;
+                if (visited.size > 5000) return null;
             }
         }
 
         // If we finished the fill and didn't hit boundaries, we found a room
-        // For simplicity, we'll add each cell as a 1x1 floor or merge them
-        // Merging is better - for now let's just add them
         resultCells.forEach(cell => {
             this.addTile(cell.x, cell.z);
         });
 
-        return true;
+        return resultCells;
     }
 
     private isBlockedByWall(p1: { x: number, z: number }, p2: { x: number, z: number }, walls: WallData[]): boolean {

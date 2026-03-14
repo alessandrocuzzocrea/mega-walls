@@ -46,7 +46,7 @@ vi.mock('three', () => {
             name = '';
             receiveShadow = false;
         },
-        PlaneGeometry: class { constructor(w: number, d: number) {} },
+        PlaneGeometry: class { constructor(_w: number, _d: number) {} },
         MeshStandardMaterial: class { 
             emissive = { set: vi.fn() }; 
             constructor(params: any) {
